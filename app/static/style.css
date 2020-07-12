@@ -1,0 +1,16 @@
+body {
+    margin: 0%;
+    overflow: hidden;
+    background: #93939c;
+}
+h1 {
+    text-align: center;
+    color:rgb(255, 255, 255);
+}
+#Game {
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}

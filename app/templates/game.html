@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Хроники Падения Зелёного Змия</h1>
+    <canvas id='Game' width = "1000" height="800">Обновите браузер</canvas>
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
+{% endblock %}

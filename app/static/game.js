@@ -174,14 +174,18 @@ class Menu extends Scene{
 
         this.addRender(new ButtonImg('static/picture/menu/menu.png', 0, 0), false);
 
-        this.initQuestButton();
-        this.initPanelButton();
+        this.initPanelCentry();
+        this.initPanelBottom();
 
-        this.initScrollPanelFriends();
+        this.initPanelScrollFriends();
         
     }
 
-    initQuestButton(){
+    initPanelTop(){
+
+    }
+
+    initPanelCentry(){
         //панель квест кнопок
         for(let y = 0; y < 3; y++){
             this.addRender(new ButtonPanel('static/picture/objects/frameCircle_80.png', 20, 110 + y * 90, 80, 80), true);
@@ -191,7 +195,7 @@ class Menu extends Scene{
         }
     }
 
-    initPanelButton(){
+    initPanelBottom(){
         // отвечает за панель вкладок Арена, Герой и тд...
         this.addRender(new ButtonPanel('static/picture/menu/panel_button1.png', 8, 495, 300, 185), true);
         this.addRender(new ButtonPanel('static/picture/menu/panel_button2.png', 315, 495, 360, 180), true);
@@ -211,7 +215,7 @@ class Menu extends Scene{
         this.addRender(new Panel(678, 614, 315, 51, color), true);
     }
 
-    initScrollPanelFriends(){
+    initPanelScrollFriends(){
         let maxFriends = 9;
         let x = 30;
         let w = 105;
@@ -227,7 +231,7 @@ class Menu extends Scene{
         }
         this.getListFriends();
         this.addRender(new ButtonPanel('static/picture/objects/nextLeft_70.png', 10, 700, 17, 103), true).func = (mode) => {this.getListFriends(-1);return true;}; 
-        this.addRender(new ButtonPanel('static/picture/objects/nextRight_70.png', 974, 700, 17, 103), true).func = (mode) => {this.getListFriends(1);return true;}; 
+        this.addRender(new ButtonPanel('static/picture/objects/nextRight_70.png', 975, 700, 17, 103), true).func = (mode) => {this.getListFriends(1);return true;}; 
     }
 
     getListFriends(mode = 0){

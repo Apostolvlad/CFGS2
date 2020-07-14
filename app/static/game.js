@@ -174,6 +174,7 @@ class Menu extends Scene{
 
         this.addRender(new ButtonImg('static/picture/menu/menu.png', 0, 0), false);
 
+        this.initPanelTop();
         this.initPanelCentry();
         this.initPanelBottom();
 
@@ -182,7 +183,7 @@ class Menu extends Scene{
     }
 
     initPanelTop(){
-
+        
     }
 
     initPanelCentry(){

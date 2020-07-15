@@ -32,6 +32,38 @@ class GameObject{
     }
 }
 
+class ProgressBar extends GameObject{
+    constructor(x, y, w, h, rgba){
+        super(x, y, w, h);
+        this.rgba = rgba;
+        this.procent = 0;
+        this.wP = this.w;
+        this.xC = this.x + this.w / 2;
+        this.step1 = w / 100;
+    }
+
+    update(){
+
+    }
+
+    render(ctx){
+        ctx.fillStyle = this.rgba;
+        ctx.fillRect(this.x, this.y, this.wP, this.h);
+        ctx.fillStyle = 'rgb(0, 0, 0)';
+        ctx.font = "45px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "hanging";
+        ctx.fillText(this.text, this.xC, this.y + 5, this.w);
+    }
+
+    setProcent(min, max){
+        this.procent = min / max * 100;
+        this.wP = this.step1 * this.procent;
+        this.text = min + "/" + max;
+        this.xC = this.x + this.w / 2;
+    }
+}
+
 class Panel extends GameObject{
     constructor(x, y, w, h, rgba){
         super(x, y, w, h);
@@ -54,14 +86,16 @@ class Text extends GameObject{
     constructor(text, x, y, w){
         super(x, y, w, 0);
         this.text = text;
+
+        this.xC = this.x + this.w / 2;
     }
 
     render(ctx){
-        ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+        ctx.fillStyle = 'rgb(0, 0, 0)';
         ctx.font = "25px serif";
         ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        ctx.fillText(this.text, this.x, this.y, this.w);
+        ctx.textBaseline = "hanging";
+        ctx.fillText(this.text, this.xC, this.y, this.w);
     }
 }
 
@@ -183,7 +217,17 @@ class Menu extends Scene{
     }
 
     initPanelTop(){
-        
+        let colorProgressBar = 'rgba(0, 0, 0, 0.4)';
+        this.progressBarEnergy = this.addRender(new ProgressBar(8, 45, 365, 37, colorProgressBar), false);
+        this.progressBarExp = this.addRender(new ProgressBar(630, 45, 365, 37, colorProgressBar), false);
+
+        this.textUsername = this.addRender(new Text('', 370, 40, 250), false);
+
+        this.textLevel = this.addRender(new Text('', 630, 15, 365), false);
+        this.textBalanc = this.addRender(new Text('', 8, 15, 365), false);
+
+        this.getInfoHero();
+
     }
 
     initPanelCentry(){
@@ -225,14 +269,24 @@ class Menu extends Scene{
         this.listFriendObjects = []; // список объектов для отображения друзей
         for(let i = 0; i < maxFriends; i++){
             this.addRender(new ButtonImg('static/picture/objects/frameCircleBox_100.png', x, 685), true);
-            obj1 = this.addRender(new Text('', x + 50, 730, 90), true); // 
-            obj2 = this.addRender(new Text('', x + 50, 770, 90), true); //this.listFriends.friendLevel
+            obj1 = this.addRender(new Text('', x, 710, 100), true); // 
+            obj2 = this.addRender(new Text('', x, 750, 100), true); //this.listFriends.friendLevel
             this.listFriendObjects.push({name:obj1, level:obj2});
             x += w;
         }
         this.getListFriends();
         this.addRender(new ButtonPanel('static/picture/objects/nextLeft_70.png', 10, 700, 17, 103), true).func = (mode) => {this.getListFriends(-1);return true;}; 
         this.addRender(new ButtonPanel('static/picture/objects/nextRight_70.png', 975, 700, 17, 103), true).func = (mode) => {this.getListFriends(1);return true;}; 
+    }
+
+    getInfoHero(){
+        this.connect.api('/api/hero?params=username,level,exp,expNextLevel,energy,energyMax,currencyGold,currencySilver', (response)=>{
+            this.progressBarEnergy.setProcent(response.energy, response.energyMax);
+            this.progressBarExp.setProcent(response.exp, response.expNextLevel);
+            this.textUsername.text = response.username;
+            this.textLevel.text   = response.level;
+            this.textBalanc.text = response.currencyGold + ' Gold  ' + response.currencySilver + ' Silver';
+        });
     }
 
     getListFriends(mode = 0){
@@ -252,8 +306,9 @@ class Menu extends Scene{
                 }
             };
         });
-        
     }
+
+
 }
 
 

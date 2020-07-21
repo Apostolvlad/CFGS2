@@ -4,8 +4,10 @@ class GameObject{
         this.y = y;
         this.w = w;
         this.h = h;
+        this.show = true;
         this.move = false;
         this.func = undefined;
+        this.render = this.checkShow(this.render)
     }
 
     checkMove(x, y){ 
@@ -27,9 +29,12 @@ class GameObject{
         
     }
 
+
     render(ctx){
-        
+
     }
+
+    checkShow(f){return function(){if(this.show)return f.apply(this, arguments);}}
 }
 
 class ProgressBar extends GameObject{
@@ -65,36 +70,44 @@ class ProgressBar extends GameObject{
 }
 
 class Panel extends GameObject{
-    constructor(x, y, w, h, rgba){
+    constructor(x, y, w, h, rgba, moveShow = false){ // задаем рендеринг от this.ifMove чтобы он либо рендерил при наведении либо нет
         super(x, y, w, h);
         this.rgba = rgba;
+        this.moveShow = moveShow;
+
          //'rgba(200, 200, 200, 0.5)';
     }
     update(){
+        this.show = this.move == this.moveShow;
+    }
+
+    render(ctx){
+        ctx.fillStyle = this.rgba;
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+    }
+}
+
+class GameText extends GameObject{
+    constructor(text, x, y, w, fillStyle = 'rgb(0, 0, 0)', textAlign = "center", textBaseline = "hanging", font = "25px serif"){
+        super(x, y, w, 0);
+        this.text = text;
+        this.fillStyle = fillStyle; 
+        this.font = font; 
+        this.textAlign = textAlign; 
+        this.textBaseline = textBaseline;
+        if(textAlign = "center"){
+            this.xC = this.x + this.w / 2;
+        }else{
+            this.xC = this.x;
+        }
         
     }
 
     render(ctx){
-        if(this.move){
-            ctx.fillStyle = this.rgba;
-            ctx.fillRect(this.x, this.y, this.w, this.h);
-        }
-    }
-}
-
-class Text extends GameObject{
-    constructor(text, x, y, w){
-        super(x, y, w, 0);
-        this.text = text;
-
-        this.xC = this.x + this.w / 2;
-    }
-
-    render(ctx){
-        ctx.fillStyle = 'rgb(0, 0, 0)';
-        ctx.font = "25px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "hanging";
+        ctx.fillStyle =  this.fillStyle;
+        ctx.font = this.font;
+        ctx.textAlign = this.textAlign;
+        ctx.textBaseline = this.textBaseline;
         ctx.fillText(this.text, this.xC, this.y, this.w);
     }
 }
@@ -112,18 +125,17 @@ class ButtonImg extends GameObject{
 }
 
 class ButtonPanel extends ButtonImg{
-    constructor(imagePath, x, y, w, h){
+    constructor(imagePath, x, y, w, h, moveShow = false){
         super(imagePath, x, y, w, h);
-        this.render = this.checkRender(this.render);
+        this.moveShow = moveShow;
     }
 
-    checkRender(f){
-        return function(){
-            if(this.move == false){
-                return f.apply(this, arguments);
-            }
-        }
-       
+    update(){
+        this.show = this.move == this.moveShow;
+    }
+
+    render(ctx){
+        ctx.drawImage(this.image, this.x, this.y);//, this.w, this.h);
     }
 }
 
@@ -168,8 +180,9 @@ class Connect{
 }
 
 class Scene{
-    constructor(connect){
-        this.connect = connect
+    constructor(parent){
+        this.then = parent;
+        this.connect = parent.connect;
         this.objectRender = []; // объекты которые надо рисовать.
         this.objectMove = []; // объекты изменяющиеся при наведении мыши, кликах...
     }
@@ -199,14 +212,95 @@ class Scene{
     }
 
 }
+class RoomHouse extends Scene{
+    constructor(parent){
+        super(parent);
+        this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
+        this.addRender(new ButtonImg('static/picture/roomHouse/roomHouse.png', 0, 85), false);
 
-class Menu extends Scene{ 
-    constructor(connect){
-        super(connect);
+        this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 954, 95, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+    }
+}
+
+class RoomEnemies extends Scene{
+    constructor(parent){
+        super(parent);
+        this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
+        this.addRender(new ButtonImg('static/picture/roomArena/roomEnemies.png', 50, 150), false);
+
+        this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 894, 170, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+    }
+}
+
+class RoomSkills extends Scene{
+    constructor(parent){
+        super(parent);
+        //perPointsFree,intPoints,strPoints,staPoints,agiPoints,lucPoints
+        this.listParamsHero = {
+            'perPointsFree':['Свободные очки', undefined],
+            'intPoints':['Интеллект', undefined],
+            'strPoints':['Сила', undefined],
+            'staPoints':['Выносливость', undefined],
+            'agiPoints':['Ловкость', undefined],
+            'lucPoints':['Удача', undefined],
+            'energyPoints':['Энергия', undefined],
+        };
+
+        this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
+        this.addRender(new ButtonImg('static/picture/roomSkills/roomSkills.png', 0, 85), false);
+
+        this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 954, 95, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+
+        this.initPanelSkills();
+        this.getInfoSkills();
+    }
+
+    initPanelSkills(){
+        let x = 490;
+        let y = 191;
+        let mode = 1;
+        let obj1 = undefined;
+        let then = this;
+        for(var element in this.listParamsHero){
+            if(mode){
+                mode = 0;
+                this.addRender(new ButtonPanel('static/picture/objects/reset_33.png', 525, y, 33, 33, true), true).func = (mode) => {this.getInfoSkills(true);return true;};
+            }else{
+                console.log('setSkills', element);
+                let q = element;
+                this.addRender(new ButtonPanel('static/picture/objects/plus_33.png', 526, y, 33, 33, true), true).func = (mode, t = q) => {this.setSkills(t, 1);return true;};
+            };
+            obj1 = this.addRender(new GameText('', x, y + 8, 150, 'rgb(0, 0, 0)', "left"), true); // 
+            obj1.text = element + ' = 1';
+            this.listParamsHero[element][1] = obj1;
+            y += 43;
+        };
+    }
+    
+    setSkills(param, count){
+        this.connect.api('/api/skillpoint?name='+ param + '&count=' + count, (response)=>{
+            this.listParamsHero[param][1].text = this.listParamsHero[param][0] + '=' + response[param];
+            this.listParamsHero['perPointsFree'][1].text = this.listParamsHero['perPointsFree'][0] + '=' + response['perPointsFree'];
+        });
+    }
+
+    getInfoSkills(button = false){
+        let z = '/api/hero?params=perPointsFree,intPoints,strPoints,staPoints,agiPoints,lucPoints,energyPoints'
+        if(button){z +='&command=resetPoints';};
+        this.connect.api(z, (response)=>{
+            for(var element in this.listParamsHero){
+                this.listParamsHero[element][1].text = this.listParamsHero[element][0] + '=' + response[element];
+            };
+        });
+    }
+}
+class RoomMenu extends Scene{ 
+    constructor(parent){
+        super(parent);
 
         this.offsetFriends = 0;
 
-        this.addRender(new ButtonImg('static/picture/menu/menu.png', 0, 0), false);
+        this.addRender(new ButtonImg('static/picture/roomMenu/roomMenu.png', 0, 0), false);
 
         this.initPanelTop();
         this.initPanelCentry();
@@ -221,11 +315,11 @@ class Menu extends Scene{
         this.progressBarEnergy = this.addRender(new ProgressBar(8, 45, 365, 37, colorProgressBar), false);
         this.progressBarExp = this.addRender(new ProgressBar(630, 45, 365, 37, colorProgressBar), false);
 
-        this.textUsername = this.addRender(new Text('', 370, 40, 250), false);
+        this.textUsername = this.addRender(new GameText('', 370, 40, 250), false);
 
-        this.textLevel = this.addRender(new Text('', 630, 15, 365), false);
-        this.textBalanc = this.addRender(new Text('', 8, 15, 365), false);
-
+        this.textLevel = this.addRender(new GameText('', 630, 15, 365), false);
+        this.textBalanc = this.addRender(new GameText('', 8, 15, 365), false);
+        
         this.getInfoHero();
 
     }
@@ -242,22 +336,22 @@ class Menu extends Scene{
 
     initPanelBottom(){
         // отвечает за панель вкладок Арена, Герой и тд...
-        this.addRender(new ButtonPanel('static/picture/menu/panel_button1.png', 8, 495, 300, 185), true);
-        this.addRender(new ButtonPanel('static/picture/menu/panel_button2.png', 315, 495, 360, 180), true);
-        this.addRender(new ButtonPanel('static/picture/menu/panel_button3.png', 678, 495, 320, 180), true);
+        this.addRender(new ButtonPanel('static/picture/roomMenu/panel_button1.png', 8, 495, 300, 185), true);
+        this.addRender(new ButtonPanel('static/picture/roomMenu/panel_button2.png', 315, 495, 360, 180), true);
+        this.addRender(new ButtonPanel('static/picture/roomMenu/panel_button3.png', 678, 495, 320, 180), true);
 
         let color = 'rgba(200, 200, 200, 0.4)';
-        this.addRender(new Panel(8, 495, 302, 51, color), true);
-        this.addRender(new Panel(8, 554, 302, 51, color), true);
-        this.addRender(new Panel(8, 614, 302, 51, color), true);
+        this.addRender(new Panel(8, 495, 302, 51, color, true), true).func = (mode) => {this.then.setScena(1, this.then.roomEnemies);return true;};
+        this.addRender(new Panel(8, 554, 302, 51, color, true), true);
+        this.addRender(new Panel(8, 614, 302, 51, color, true), true);
 
-        this.addRender(new Panel(315, 495, 357, 51, color), true);
-        this.addRender(new Panel(315, 554, 357, 51, color), true);
-        this.addRender(new Panel(315, 614, 357, 51, color), true);
-
-        this.addRender(new Panel(678, 495, 315, 51, color), true);
-        this.addRender(new Panel(678, 554, 315, 51, color), true);
-        this.addRender(new Panel(678, 614, 315, 51, color), true);
+        this.addRender(new Panel(315, 495, 357, 51, color, true), true).func = (mode) => {this.then.setScena(1, this.then.roomSkills);return true;};
+        this.addRender(new Panel(315, 554, 357, 51, color, true), true).func = (mode) => {this.then.setScena(1, this.then.roomHouse);return true;};
+        this.addRender(new Panel(315, 614, 357, 51, color, true), true);
+        
+        this.addRender(new Panel(678, 495, 315, 51, color, true), true);
+        this.addRender(new Panel(678, 554, 315, 51, color, true), true);
+        this.addRender(new Panel(678, 614, 315, 51, color, true), true);
     }
 
     initPanelScrollFriends(){
@@ -269,8 +363,8 @@ class Menu extends Scene{
         this.listFriendObjects = []; // список объектов для отображения друзей
         for(let i = 0; i < maxFriends; i++){
             this.addRender(new ButtonImg('static/picture/objects/frameCircleBox_100.png', x, 685), true);
-            obj1 = this.addRender(new Text('', x, 710, 100), true); // 
-            obj2 = this.addRender(new Text('', x, 750, 100), true); //this.listFriends.friendLevel
+            obj1 = this.addRender(new GameText('', x, 710, 100), true); // 
+            obj2 = this.addRender(new GameText('', x, 750, 100), true); //this.listFriends.friendLevel
             this.listFriendObjects.push({name:obj1, level:obj2});
             x += w;
         }
@@ -284,8 +378,8 @@ class Menu extends Scene{
             this.progressBarEnergy.setProcent(response.energy, response.energyMax);
             this.progressBarExp.setProcent(response.exp, response.expNextLevel);
             this.textUsername.text = response.username;
-            this.textLevel.text   = response.level;
-            this.textBalanc.text = response.currencyGold + ' Gold  ' + response.currencySilver + ' Silver';
+            this.textLevel.text    = response.level;
+            this.textBalanc.text   = response.currencyGold + ' Gold  ' + response.currencySilver + ' Silver';
         });
     }
 
@@ -294,8 +388,8 @@ class Menu extends Scene{
         this.offsetFriends += 10 * mode
         this.connect.api('/api/friends?offset=' + this.offsetFriends, (response)=>{
             // получаем список друзей
-            this.offsetFriends = response.offsetFriends; 
-            let listFriends = response.listFriends; // /api/friends
+            this.offsetFriends = response.offsetFriends;
+            let listFriends    = response.listFriends;    // /api/friends
             for(let i = 0; i < this.listFriendObjects.length; i++){
                 if(listFriends.length > i){
                     this.listFriendObjects[i].name.text = listFriends[i].name;
@@ -316,51 +410,92 @@ function start(){
 
     const canvas      = document.getElementById('Game'); //document.createElement('canvas');//document.querySelector('body').appendChild(canvas);
     const ctx         = canvas.getContext('2d');
-    let w             = canvas.width  //= innerWidth;
-    let h             = canvas.height //= innerHeight;
-    let menu = undefined;
-    let connect = undefined;
-    let modeClick = 0;
+    this.w             = canvas.width  //= innerWidth;
+    this.h             = canvas.height //= innerHeight;
+    this.roomMenu = undefined;
+    this.connect = undefined;
+    this.modeClick = 0;
+    this.mx, this.my = 0;
+
+    this.objectI = 1;
+    this.objects = [undefined, undefined, undefined, undefined, undefined];
     
+    this.setScena = function(index, obj = undefined){
+        this.objects[index] = obj;
+    }
+
+    function checkObjects(){
+        this.objectI = 0;
+        this.objects.forEach(element=>{if(element != undefined){this.objectI += 1;}});
+        console.log(this.objectI);
+    }
+
     function Init(){
         connect = new Connect();
-        menu = new Menu(connect);
+        
+        
+        roomMenu = new RoomMenu(this);
+        roomEnemies = new RoomEnemies(this);
+        roomSkills = new RoomSkills(this);
+        roomHouse = new RoomHouse(this);
+        
+        
+
+
+
+
+        this.objects[0] = roomMenu;
+        //this.setShow(this.roomMenu);
         
         //window.onmousemove
         window.onmousemove = e => {
-            mx = e.x - canvas.getBoundingClientRect().x;
-            my = e.y - canvas.getBoundingClientRect().y;
-            menu.checkMove(mx, my);
+            this.mx = e.x - canvas.getBoundingClientRect().x;
+            this.my = e.y - canvas.getBoundingClientRect().y;
+            
         }
 
         window.onmousedown = e => {
             mx = e.x - canvas.getBoundingClientRect().x;
             my = e.y - canvas.getBoundingClientRect().y;
-            menu.checkMove(mx, my);
             modeClick = 1;
         }
     }
 
+    //let previous = Date.now();
+    //let lag = 0.0;
+    //let MS_PER_UPDATE = 60;
     function Loop(){
-        
-        ctx.clearRect(0, 0, w, h);
-        Click();
+        //let current = Date.now();
+        //let elapsed = current - previous;
+        //previous = current;
+        //lag += elapsed;
+        ProcessInput();
+        checkObjects();
         Update();
+        //while (lag >= MS_PER_UPDATE) {
+        //    Update();
+            //console.log('update');
+        //    lag -= MS_PER_UPDATE;
+        //}
         Render(ctx);
+        //console.log('render', i);
         requestAnimationFrame(Loop);
     }
 
     function Update(){
-        menu.update();
+        for(let i = 0; i < this.objectI; i++){this.objects[i].update();}
     }
 
     function Render(ctx){
-        menu.render(ctx);
+        ctx.clearRect(0, 0, this.w, this.h);
+        for(let i = 0; i < this.objectI; i++){this.objects[i].render(ctx);}
     }
 
-    function Click(){
+    function ProcessInput(){
+        this.objects[this.objectI - 1].checkMove(this.mx, this.my);
         if(modeClick != 0){
-            menu.click(modeClick);
+            //for(let i = this.objectI - 1;-1 < i; i--){console.log(i);this.objects[i].click(modeClick)}
+            this.objects[this.objectI - 1].click(modeClick);
             modeClick = 0;
         }
     }

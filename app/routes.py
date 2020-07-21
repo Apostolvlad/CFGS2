@@ -4,6 +4,8 @@ from app import app
 from app.models import User
 from datetime import datetime
 
+from app import db
+
 @app.route('/')
 @app.route('/index')
 def index():
@@ -22,7 +24,20 @@ def getFriends():
 #http://127.0.0.1:5000/api/hero?params=username,level,exp,expNextLevel,energy,energyMax,currencyGold,currencySilver
 @app.route('/api/hero', methods = ["GET", "POST"])
 def getHeroInfo():
+    command = request.args.get('command')
     user = User.query.filter_by(username = 'Vlad').first()
-    result = dict()
-    for name in request.args.get('params').split(','): result.update({name:user.__dict__.get(name)})
+    hero = user.hero
+    if not command is None: getattr(hero, command)()
+    result = dict() 
+    for name in request.args.get('params').split(','): result.update({name:getattr(hero, name, getattr(user, name, None))})
+    return jsonify(result)
+
+#http://127.0.0.1:5000/api/skillpoint?name=intPoints&count=1
+@app.route('/api/skillpoint', methods = ["GET", "PUT"])
+def setSkillPoint():
+    user = User.query.filter_by(username = 'Vlad').first()
+    hero = user.hero
+    namePoints = request.args.get('name')
+    count = int(request.args.get('count'))
+    result = hero.setPoints(namePoints, count)
     return jsonify(result)

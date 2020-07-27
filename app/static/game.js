@@ -15,20 +15,13 @@ class GameObject{
     }
 
     click(mode){
-        if(this.move){
-            if(this.func != undefined){
-                return this.func(mode); // это позволит при необходимости задавать функцию объекту так, чтобы после можно было продолжить поиск объектов по которым тоже был произведён клик.
-            }
-            return true;
-        }else{
-            return false
-        }
+        if(this.move&this.func != undefined)return this.func(mode);
+        return false;
     }
 
     update(){
         
     }
-
 
     render(ctx){
 
@@ -38,9 +31,13 @@ class GameObject{
 }
 
 class ProgressBar extends GameObject{
-    constructor(x, y, w, h, rgba){
+    constructor(x, y, w, h, rgba = 'rgb(0, 0, 0, 0)', font = "45px serif", fillStyle = 'rgb(0, 0, 0)', textAlign = "center", textBaseline = "hanging"){
         super(x, y, w, h);
         this.rgba = rgba;
+        this.fillStyle = fillStyle;
+        this.textAlign = textAlign;
+        this.font = font;
+        this.textBaseline = textBaseline;
         this.procent = 0;
         this.wP = this.w;
         this.xC = this.x + this.w / 2;
@@ -54,15 +51,17 @@ class ProgressBar extends GameObject{
     render(ctx){
         ctx.fillStyle = this.rgba;
         ctx.fillRect(this.x, this.y, this.wP, this.h);
-        ctx.fillStyle = 'rgb(0, 0, 0)';
-        ctx.font = "45px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "hanging";
+        ctx.fillStyle = this.fillStyle;
+        ctx.font = this.font;
+        ctx.textAlign = this.textAlign;
+        ctx.textBaseline = this.textBaseline;
         ctx.fillText(this.text, this.xC, this.y + 5, this.w);
     }
 
     setProcent(min, max){
         this.procent = min / max * 100;
+        if(this.procent < 0){this.procent = 0;}
+        if(min < 0){this.min = 0;}
         this.wP = this.step1 * this.procent;
         this.text = min + "/" + max;
         this.xC = this.x + this.w / 2;
@@ -227,8 +226,102 @@ class RoomEnemies extends Scene{
         super(parent);
         this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
         this.addRender(new ButtonImg('static/picture/roomArena/roomEnemies.png', 50, 150), false);
-
         this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 894, 170, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+        this.initPanelEnemies();
+    }
+
+    // 'rgba(238, 147, 116, 0.4)'; то шо нужно красное
+    // 'rgba(200, 200, 200, 0.4)'; серый
+    // 'rgba(0, 154, 99, 0.5)'; зелёный 
+    initPanelEnemies(){
+        let color = 'rgba(238, 147, 116, 0.5)'; 
+        this.addRender(new Panel(93, 478, 193, 34, color, true), true).func = (mode) => {this.startBattle(0);return true;};//.func = (mode) => {this.then.setScena(1, this.then.roomEnemies);return true;};
+        this.addRender(new Panel(300, 478, 193, 34, color, true), true).func = (mode) => {this.startBattle(1);return true;};
+        this.addRender(new Panel(507, 478, 193, 34, color, true), true).func = (mode) => {this.startBattle(2);return true;};
+        this.addRender(new Panel(714, 478, 193, 34, color, true), true).func = (mode) => {this.startBattle(3);return true;};
+    }
+
+    startBattle(modeEnemies){
+        let z = '/api/battle/create?mode=' + modeEnemies;
+        this.then.setScena(0, this.then.roomBattle);
+        this.then.setScena(1);
+        this.connect.api(z, (response)=>{
+            this.then.roomBattle.init(response)
+        });
+    }
+
+}
+
+class RoomBattle extends Scene{
+    constructor(parent){
+        super(parent);
+
+        this.hero = {
+            progressBarHealth:undefined,
+            progressBarEnergy:undefined,
+        }
+
+        this.enemeis = {
+            progressBarHealth:undefined,
+            progressBarEnergy:undefined,
+        }
+
+        this.addRender(new ButtonImg('static/picture/roomArena/roomBattle.png', 0, 0), false);
+
+        this.initPanelBars();
+
+        this.initPanelSkills();
+
+    }
+
+    init(response = undefined){
+        if(response !=undefined){
+            this.hero.progressBarHealth.setProcent(response.hero.health, response.hero.maxHealth);
+            this.hero.progressBarEnergy.setProcent(100, 100);
+            this.enemeis.progressBarHealth.setProcent(response.enemies.health, response.enemies.maxHealth);
+            this.enemeis.progressBarEnergy.setProcent(100, 100);
+        }else{
+
+        }
+    }
+
+    initPanelSkills(){
+        let color = 'rgba(200, 200, 200, 0.5)'; 
+        for(let i = 0; i < 10; i++){
+            let q = i;
+            this.addRender(new ButtonImg('static/picture/objects/frameBox_100.png', 23 + i * 95, 440, 100, 100), false);
+            this.addRender(new Panel(28 + i * 95, 445, 90, 90, color, true), true).func = (mode, id = q) => {this.userSkills(id);return true;};//.func = (mode) => {this.startBattle(3);return true;};
+        }
+
+        for(let i = 0; i < 10; i++){
+            this.addRender(new ButtonImg('static/picture/objects/frameBox_50.png', 263 + i * 47, 555, 50, 50), false);
+            this.addRender(new Panel(265 + i * 47, 558, 45, 45, color, true), true);//.func = (mode) => {this.startBattle(3);return true;};
+        }
+        this.addRender(new ButtonPanel('static/picture/objects/nextLeft_50.png', 245, 555, 17, 50), true).func = (mode) => {return true;}; 
+        this.addRender(new ButtonPanel('static/picture/objects/nextRight_50.png', 738, 555, 17, 50), true).func = (mode) => {return true;}; 
+        
+        this.addRender(new Panel(14, 559, 225, 40, 'rgba(255, 36, 0, 0.4)', true), true).func = (mode) => {this.connect.api('/api/battle/quit', (response)=>{});this.then.setScena(0, this.then.roomMenu);return true;};
+        this.addRender(new Panel(762, 559, 225, 40, 'rgba(0, 154, 99, 0.5)', true), true).func = (mode) => {this.connect.api('/api/battle/quit', (response)=>{});this.then.setScena(0, this.then.roomMenu);return true;};
+    }
+
+    initPanelBars(){
+        let colorProgressBar2 = 'rgba(255, 207, 64, 0.4)';
+        let colorProgressBar1 = 'rgba(255, 36, 0, 0.4)'; 
+        this.hero.progressBarHealth = this.addRender(new ProgressBar(8, 6, 337, 46, colorProgressBar1, "40px serif"), false);
+        this.hero.progressBarEnergy = this.addRender(new ProgressBar(8, 52, 337, 32, colorProgressBar2, "25px serif"), false);
+
+        this.enemeis.progressBarHealth = this.addRender(new ProgressBar(656, 6, 338, 46, colorProgressBar1, "40px serif"), false);
+        this.enemeis.progressBarEnergy = this.addRender(new ProgressBar(656, 52, 338, 32, colorProgressBar2, "25px serif"), false);
+        
+        //this.enemeis.progressBarHealth = this.addRender(new ProgressBar(630, 45, 365, 37, colorProgressBar), false);
+        //this.enemeis.progressBarEnergy = this.addRender(new ProgressBar(8, 45, 365, 37, colorProgressBar), false);
+    }
+
+    userSkills(id){
+        this.connect.api('/api/battle/get?skills=' + id, (response)=>{
+            console.log('Ok', response);
+            this.init(response[1].info);
+        });// + mode
     }
 }
 
@@ -260,13 +353,11 @@ class RoomSkills extends Scene{
         let y = 191;
         let mode = 1;
         let obj1 = undefined;
-        let then = this;
         for(var element in this.listParamsHero){
             if(mode){
                 mode = 0;
                 this.addRender(new ButtonPanel('static/picture/objects/reset_33.png', 525, y, 33, 33, true), true).func = (mode) => {this.getInfoSkills(true);return true;};
             }else{
-                console.log('setSkills', element);
                 let q = element;
                 this.addRender(new ButtonPanel('static/picture/objects/plus_33.png', 526, y, 33, 33, true), true).func = (mode, t = q) => {this.setSkills(t, 1);return true;};
             };
@@ -377,7 +468,7 @@ class RoomMenu extends Scene{
         this.connect.api('/api/hero?params=username,level,exp,expNextLevel,energy,energyMax,currencyGold,currencySilver', (response)=>{
             this.progressBarEnergy.setProcent(response.energy, response.energyMax);
             this.progressBarExp.setProcent(response.exp, response.expNextLevel);
-            this.textUsername.text = response.username;
+            this.textUsername.text = response.username; 
             this.textLevel.text    = response.level;
             this.textBalanc.text   = response.currencyGold + ' Gold  ' + response.currencySilver + ' Silver';
         });
@@ -435,8 +526,12 @@ function start(){
         
         
         roomMenu = new RoomMenu(this);
+
         roomEnemies = new RoomEnemies(this);
+        roomBattle = new RoomBattle(this);
+
         roomSkills = new RoomSkills(this);
+
         roomHouse = new RoomHouse(this);
         
         
@@ -444,7 +539,7 @@ function start(){
 
 
 
-        this.objects[0] = roomMenu;
+        this.objects[0] = roomMenu;//roomMenu; roomBattle
         //this.setShow(this.roomMenu);
         
         //window.onmousemove

@@ -9,25 +9,18 @@ class GameObject{
         this.func = undefined;
         this.render = this.checkShow(this.render)
     }
-
-    checkMove(x, y){ 
-        this.move = (this.x < x & x < this.x + this.w & this.y < y & y < this.y + this.h);
-    }
-
-    click(mode){
-        if(this.move&this.func != undefined)return this.func(mode);
-        return false;
-    }
-
-    update(){
-        
-    }
-
-    render(ctx){
-
-    }
-
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
     checkShow(f){return function(){if(this.show)return f.apply(this, arguments);}}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    checkMove(x, y){this.move = (this.x < x & x < this.x + this.w & this.y < y & y < this.y + this.h);}
+
+    click(mode){if(this.move&this.func != undefined)return this.func(mode);return false;}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    update(){}
+
+    render(ctx){}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
 }
 
 class ProgressBar extends GameObject{
@@ -44,9 +37,7 @@ class ProgressBar extends GameObject{
         this.step1 = w / 100;
     }
 
-    update(){
-
-    }
+    update(){}
 
     render(ctx){
         ctx.fillStyle = this.rgba;
@@ -60,8 +51,8 @@ class ProgressBar extends GameObject{
 
     setProcent(min, max){
         this.procent = min / max * 100;
-        if(this.procent < 0){this.procent = 0;}
-        if(min < 0){this.min = 0;}
+        if(this.procent < 0)this.procent = 0;
+        if(min < 0)min = 0;
         this.wP = this.step1 * this.procent;
         this.text = min + "/" + max;
         this.xC = this.x + this.w / 2;

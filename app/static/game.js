@@ -310,7 +310,6 @@ class RoomBattle extends Scene{
 
     userSkills(id){
         this.connect.api('/api/battle/get?skills=' + id, (response)=>{
-            console.log('Ok', response);
             this.init(response[1].info);
         });// + mode
     }
@@ -509,7 +508,6 @@ function start(){
     function checkObjects(){
         this.objectI = 0;
         this.objects.forEach(element=>{if(element != undefined){this.objectI += 1;}});
-        console.log(this.objectI);
     }
 
     function Init(){

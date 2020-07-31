@@ -7,10 +7,15 @@ class GameObject{
         this.show = true;
         this.move = false;
         this.func = undefined;
-        this.render = this.checkShow(this.render)
+        this.render = this.modeShow(this.render)
     }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    checkShow(f){return function(){if(this.show)return f.apply(this, arguments);}}
+// МОДИФИКАТОРЫ!!!!
+// RENDER
+    modeShow(f){return function(){if(this.show)return f.apply(this, arguments);}}
+// UPDATE
+// Данный модификатор позволяет задавать поведение при наведении на объект. self.update = this.modeUpdate(this.update)
+    modeUpdate(f, moveShow){return function(){this.show = this.move == moveShow;return f.apply(this, arguments);}}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     checkMove(x, y){this.move = (this.x < x & x < this.x + this.w & this.y < y & y < this.y + this.h);}
 
@@ -22,59 +27,40 @@ class GameObject{
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
 }
-
-class ProgressBar extends GameObject{
-    constructor(x, y, w, h, rgba = 'rgb(0, 0, 0, 0)', font = "45px serif", fillStyle = 'rgb(0, 0, 0)', textAlign = "center", textBaseline = "hanging"){
-        super(x, y, w, h);
-        this.rgba = rgba;
-        this.fillStyle = fillStyle;
-        this.textAlign = textAlign;
-        this.font = font;
-        this.textBaseline = textBaseline;
-        this.procent = 0;
-        this.wP = this.w;
-        this.xC = this.x + this.w / 2;
-        this.step1 = w / 100;
-    }
-
-    update(){}
-
-    render(ctx){
-        ctx.fillStyle = this.rgba;
-        ctx.fillRect(this.x, this.y, this.wP, this.h);
-        ctx.fillStyle = this.fillStyle;
-        ctx.font = this.font;
-        ctx.textAlign = this.textAlign;
-        ctx.textBaseline = this.textBaseline;
-        ctx.fillText(this.text, this.xC, this.y + 5, this.w);
-    }
-
-    setProcent(min, max){
-        this.procent = min / max * 100;
-        if(this.procent < 0)this.procent = 0;
-        if(min < 0)min = 0;
-        this.wP = this.step1 * this.procent;
-        this.text = min + "/" + max;
-        this.xC = this.x + this.w / 2;
-    }
-}
+// Panel
+// Этот объект представляет из себя панель одного цвета.
+// Параметры:
+// x, y, w, h - точки расположения панели;
+// rgba - параметр цвета. 4 цифра это параметр прозрачности, в среднем 5 единиц ставиться. пример: 'rgb(0, 0, 0, 0)' 
+// moveShow - этот параметр определяет поведение элемента, при наведении его на панель. Если FALSE, то выводит панель пока на неё не навели курсор. и наоборот.
 
 class Panel extends GameObject{
     constructor(x, y, w, h, rgba, moveShow = false){ // задаем рендеринг от this.ifMove чтобы он либо рендерил при наведении либо нет
         super(x, y, w, h);
         this.rgba = rgba;
-        this.moveShow = moveShow;
+        this.update = this.modeUpdate(this.update, moveShow);
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    render(ctx){ctx.fillStyle = this.rgba;ctx.fillRect(this.x, this.y, this.w, this.h);}
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+}
 
-         //'rgba(200, 200, 200, 0.5)';
-    }
-    update(){
-        this.show = this.move == this.moveShow;
+// Picture
+// Этот объект позволяет демонстрировать картинку.
+// Параметры:
+// imagePath - путь до картинки
+// x, y, w, h - точки расположения панели;
+// rgba - параметр цвета. 4 цифра это параметр прозрачности, в среднем 5 единиц ставиться. пример: 'rgb(0, 0, 0, 0)' 
+// moveShow - этот параметр определяет поведение элемента, при наведении его на панель. Если FALSE, то выводит панель пока на неё не навели курсор. и наоборот.
+
+class Picture extends GameObject{
+    constructor(imagePath, x, y, w, h){ // задаем рендеринг от this.ifMove чтобы он либо рендерил при наведении либо нет
+        super(x, y, w, h);
+        this.image = new Image();
+        this.image.src = imagePath;
     }
 
-    render(ctx){
-        ctx.fillStyle = this.rgba;
-        ctx.fillRect(this.x, this.y, this.w, this.h);
-    }
+    render(ctx){ctx.drawImage(this.image, this.x, this.y);}
 }
 
 class GameText extends GameObject{
@@ -102,32 +88,78 @@ class GameText extends GameObject{
     }
 }
 
-class ButtonImg extends GameObject{
-    constructor(imagePath, x, y, w, h){
-        super(x, y, w, h);
-        this.image = new Image();
-        this.image.src = imagePath;
-    }
+// PanelPicture
+// Этот объект позволяет демонстрировать картинку, и задавать поведение при наведении на неё.
+// Параметры:
+// imagePath - путь до картинки
+// x, y, w, h - точки расположения панели;
+// rgba - параметр цвета. 4 цифра это параметр прозрачности, в среднем 5 единиц ставиться. пример: 'rgb(0, 0, 0, 0)' 
+// moveShow - этот параметр определяет поведение элемента, при наведении его на панель. Если FALSE, то выводит панель пока на неё не навели курсор. и наоборот.
 
-    render(ctx){
-        ctx.drawImage(this.image, this.x, this.y);//, this.w, this.h);
-    }
-}
-
-class ButtonPanel extends ButtonImg{
+class PanelPicture extends Picture{
     constructor(imagePath, x, y, w, h, moveShow = false){
         super(imagePath, x, y, w, h);
-        this.moveShow = moveShow;
+        this.update = this.modeUpdate(this.update, moveShow);
+    }
+}
+
+class ProgressBar extends GameObject{
+    constructor(x, y, w, h, rgba = 'rgb(0, 0, 0, 0)', font = "45px serif", fillStyle = 'rgb(0, 0, 0)', textAlign = "center", textBaseline = "hanging"){
+        super(x, y, w, h);
+        this.rgba = rgba;
+        this.fillStyle = fillStyle;
+        this.textAlign = textAlign;
+        this.font = font;
+        this.textBaseline = textBaseline;
+        this.procent = 0;
+        this.wP = this.w;
+        this.xC = this.x + this.w / 2;
+        this.step1 = w / 100;
+        //this.render = this.modeRenderPanel(this.render)
     }
 
-    update(){
-        this.show = this.move == this.moveShow;
+    modeRenderPanel(f){
+        return function(){
+            this.render2(arguments[0]);
+            const result = f.apply(this, arguments);
+            //console.log(arguments[0]);
+            
+            //console.log(arguments);
+            //this.render2(arguments);
+            return result;
+        }
+    }
+
+    render2(ctx){
+        console.log('render');
+        ctx.fillStyle = this.rgba;//'rgb(0, 0, 0, 0)';//
+        ctx.fillRect(this.x, this.y, this.wP, this.h);
     }
 
     render(ctx){
-        ctx.drawImage(this.image, this.x, this.y);//, this.w, this.h);
+        ctx.fillStyle = this.rgba;
+        ctx.fillRect(this.x, this.y, this.wP, this.h);
+        ctx.fillStyle = this.fillStyle;
+        ctx.font = this.font;
+        ctx.textAlign = this.textAlign;
+        ctx.textBaseline = this.textBaseline;
+        ctx.fillText(this.text, this.xC, this.y + 5, this.w);
+    }
+
+    setProcent(min, max){
+        this.procent = min / max * 100;
+        if(this.procent < 0)this.procent = 0;
+        if(min < 0)min = 0;
+        this.wP = this.step1 * this.procent;
+        this.text = min + "/" + max;
+        this.xC = this.x + this.w / 2;
     }
 }
+
+
+
+
+
 
 class Connect{
     // https://blog.miguelgrinberg.com/post/writing-a-javascript-rest-client
@@ -206,9 +238,9 @@ class RoomHouse extends Scene{
     constructor(parent){
         super(parent);
         this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
-        this.addRender(new ButtonImg('static/picture/roomHouse/roomHouse.png', 0, 85), false);
+        this.addRender(new Picture('static/picture/roomHouse/roomHouse.png', 0, 85), false);
 
-        this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 954, 95, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+        this.addRender(new PanelPicture('static/picture/objects/close_33.png', 954, 95, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
     }
 }
 
@@ -216,8 +248,8 @@ class RoomEnemies extends Scene{
     constructor(parent){
         super(parent);
         this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
-        this.addRender(new ButtonImg('static/picture/roomArena/roomEnemies.png', 50, 150), false);
-        this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 894, 170, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+        this.addRender(new Picture('static/picture/roomArena/roomEnemies.png', 50, 150), false);
+        this.addRender(new PanelPicture('static/picture/objects/close_33.png', 894, 170, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
         this.initPanelEnemies();
     }
 
@@ -257,7 +289,7 @@ class RoomBattle extends Scene{
             progressBarEnergy:undefined,
         }
 
-        this.addRender(new ButtonImg('static/picture/roomArena/roomBattle.png', 0, 0), false);
+        this.addRender(new Picture('static/picture/roomArena/roomBattle.png', 0, 0), false);
 
         this.initPanelBars();
 
@@ -280,16 +312,16 @@ class RoomBattle extends Scene{
         let color = 'rgba(200, 200, 200, 0.5)'; 
         for(let i = 0; i < 10; i++){
             let q = i;
-            this.addRender(new ButtonImg('static/picture/objects/frameBox_100.png', 23 + i * 95, 440, 100, 100), false);
+            this.addRender(new Picture('static/picture/objects/frameBox_100.png', 23 + i * 95, 440, 100, 100), false);
             this.addRender(new Panel(28 + i * 95, 445, 90, 90, color, true), true).func = (mode, id = q) => {this.userSkills(id);return true;};//.func = (mode) => {this.startBattle(3);return true;};
         }
 
         for(let i = 0; i < 10; i++){
-            this.addRender(new ButtonImg('static/picture/objects/frameBox_50.png', 263 + i * 47, 555, 50, 50), false);
+            this.addRender(new Picture('static/picture/objects/frameBox_50.png', 263 + i * 47, 555, 50, 50), false);
             this.addRender(new Panel(265 + i * 47, 558, 45, 45, color, true), true);//.func = (mode) => {this.startBattle(3);return true;};
         }
-        this.addRender(new ButtonPanel('static/picture/objects/nextLeft_50.png', 245, 555, 17, 50), true).func = (mode) => {return true;}; 
-        this.addRender(new ButtonPanel('static/picture/objects/nextRight_50.png', 738, 555, 17, 50), true).func = (mode) => {return true;}; 
+        this.addRender(new PanelPicture('static/picture/objects/nextLeft_50.png', 245, 555, 17, 50), true).func = (mode) => {return true;}; 
+        this.addRender(new PanelPicture('static/picture/objects/nextRight_50.png', 738, 555, 17, 50), true).func = (mode) => {return true;}; 
         
         this.addRender(new Panel(14, 559, 225, 40, 'rgba(255, 36, 0, 0.4)', true), true).func = (mode) => {this.connect.api('/api/battle/quit', (response)=>{});this.then.setScena(0, this.then.roomMenu);return true;};
         this.addRender(new Panel(762, 559, 225, 40, 'rgba(0, 154, 99, 0.5)', true), true).func = (mode) => {this.connect.api('/api/battle/quit', (response)=>{});this.then.setScena(0, this.then.roomMenu);return true;};
@@ -330,9 +362,9 @@ class RoomSkills extends Scene{
         };
 
         this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
-        this.addRender(new ButtonImg('static/picture/roomSkills/roomSkills.png', 0, 85), false);
+        this.addRender(new Picture('static/picture/roomSkills/roomSkills.png', 0, 85), false);
 
-        this.addRender(new ButtonPanel('static/picture/objects/close_33.png', 954, 95, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
+        this.addRender(new PanelPicture('static/picture/objects/close_33.png', 954, 95, 33, 33, true), true).func = (mode) => {this.then.setScena(1);return true;};
 
         this.initPanelSkills();
         this.getInfoSkills();
@@ -346,10 +378,10 @@ class RoomSkills extends Scene{
         for(var element in this.listParamsHero){
             if(mode){
                 mode = 0;
-                this.addRender(new ButtonPanel('static/picture/objects/reset_33.png', 525, y, 33, 33, true), true).func = (mode) => {this.getInfoSkills(true);return true;};
+                this.addRender(new PanelPicture('static/picture/objects/reset_33.png', 525, y, 33, 33, true), true).func = (mode) => {this.getInfoSkills(true);return true;};
             }else{
                 let q = element;
-                this.addRender(new ButtonPanel('static/picture/objects/plus_33.png', 526, y, 33, 33, true), true).func = (mode, t = q) => {this.setSkills(t, 1);return true;};
+                this.addRender(new PanelPicture('static/picture/objects/plus_33.png', 526, y, 33, 33, true), true).func = (mode, t = q) => {this.setSkills(t, 1);return true;};
             };
             obj1 = this.addRender(new GameText('', x, y + 8, 150, 'rgb(0, 0, 0)', "left"), true); // 
             obj1.text = element + ' = 1';
@@ -381,7 +413,7 @@ class RoomMenu extends Scene{
 
         this.offsetFriends = 0;
 
-        this.addRender(new ButtonImg('static/picture/roomMenu/roomMenu.png', 0, 0), false);
+        this.addRender(new Picture('static/picture/roomMenu/roomMenu.png', 0, 0), false);
 
         this.initPanelTop();
         this.initPanelCentry();
@@ -408,18 +440,18 @@ class RoomMenu extends Scene{
     initPanelCentry(){
         //панель квест кнопок
         for(let y = 0; y < 3; y++){
-            this.addRender(new ButtonPanel('static/picture/objects/frameCircle_80.png', 20, 110 + y * 90, 80, 80), true);
+            this.addRender(new PanelPicture('static/picture/objects/frameCircle_80.png', 20, 110 + y * 90, 80, 80), true);
         }
         for(let y = 0; y < 3; y++){
-            this.addRender(new ButtonPanel('static/picture/objects/frameCircleBox_80.png', 900, 110 + y * 90, 80, 80), true);
+            this.addRender(new PanelPicture('static/picture/objects/frameCircleBox_80.png', 900, 110 + y * 90, 80, 80), true);
         }
     }
 
     initPanelBottom(){
         // отвечает за панель вкладок Арена, Герой и тд...
-        this.addRender(new ButtonPanel('static/picture/roomMenu/panel_button1.png', 8, 495, 300, 185), true);
-        this.addRender(new ButtonPanel('static/picture/roomMenu/panel_button2.png', 315, 495, 360, 180), true);
-        this.addRender(new ButtonPanel('static/picture/roomMenu/panel_button3.png', 678, 495, 320, 180), true);
+        this.addRender(new PanelPicture('static/picture/roomMenu/panel_button1.png', 8, 495, 300, 185), true);
+        this.addRender(new PanelPicture('static/picture/roomMenu/panel_button2.png', 315, 495, 360, 180), true);
+        this.addRender(new PanelPicture('static/picture/roomMenu/panel_button3.png', 678, 495, 320, 180), true);
 
         let color = 'rgba(200, 200, 200, 0.4)';
         this.addRender(new Panel(8, 495, 302, 51, color, true), true).func = (mode) => {this.then.setScena(1, this.then.roomEnemies);return true;};
@@ -443,15 +475,15 @@ class RoomMenu extends Scene{
         let obj2 = undefined;
         this.listFriendObjects = []; // список объектов для отображения друзей
         for(let i = 0; i < maxFriends; i++){
-            this.addRender(new ButtonImg('static/picture/objects/frameCircleBox_100.png', x, 685), true);
+            this.addRender(new Picture('static/picture/objects/frameCircleBox_100.png', x, 685), true);
             obj1 = this.addRender(new GameText('', x, 710, 100), true); // 
             obj2 = this.addRender(new GameText('', x, 750, 100), true); //this.listFriends.friendLevel
             this.listFriendObjects.push({name:obj1, level:obj2});
             x += w;
         }
         this.getListFriends();
-        this.addRender(new ButtonPanel('static/picture/objects/nextLeft_70.png', 10, 700, 17, 103), true).func = (mode) => {this.getListFriends(-1);return true;}; 
-        this.addRender(new ButtonPanel('static/picture/objects/nextRight_70.png', 975, 700, 17, 103), true).func = (mode) => {this.getListFriends(1);return true;}; 
+        this.addRender(new PanelPicture('static/picture/objects/nextLeft_70.png', 10, 700, 17, 103), true).func = (mode) => {this.getListFriends(-1);return true;}; 
+        this.addRender(new PanelPicture('static/picture/objects/nextRight_70.png', 975, 700, 17, 103), true).func = (mode) => {this.getListFriends(1);return true;}; 
     }
 
     getInfoHero(){

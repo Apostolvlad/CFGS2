@@ -20,35 +20,9 @@ class User(db.Model):
     #username, level, exp, expNextLevel, energy, energyMax, currencyGold, currencySilver
     @property
     def hero(self): return self.heros.filter_by(type = self.hero_type).one()
-
-class Characteristic:
-    # ВЛОЖЕННЫЕ ОЧКИ ХАРАКТЕРИСТИК!!!
-    intPoints = db.Column(db.Integer(), default = 1) # Интеллект
-    strPoints = db.Column(db.Integer(), default = 1) # Сила
-    staPoints = db.Column(db.Integer(), default = 1) # Выносливость
-    agiPoints = db.Column(db.Integer(), default = 1) # Ловкость
-    lucPoints = db.Column(db.Integer(), default = 1) # Удача
-    ergPoints = db.Column(db.Integer(), default = 1) # энергия
-
-    pointParams = ('intPoints', 'strPoints', 'staPoints', 'agiPoints', 'lucPoints', 'ergPoints')
-    
-    def setPoints(self, namePoints, count):
-        if not namePoints in Characteristic.pointParams: return 123
-        value = getattr(self, namePoints)
-        if value is None: value = 1
-        if self.perPointsFree > count:
-            self.perPointsFree -= count
-        else:
-            count = self.perPointsFree
-            self.perPointsFree = 0
-        value_new = value + count
-        setattr(self, namePoints, value_new)
-        return {namePoints:value_new, 'perPointsFree':self.perPointsFree}
-
+#####################################################################################################################
 class Skills:
-    skills = (
-
-    )
+    skills = ()
     def useSkills(self, id):
         skills = getattr(self, 'skills' + id, None)
         if skills is None: return False
@@ -59,165 +33,127 @@ class Skills:
         damage = self.strPoints * random.randint(80, 100)
         obj.health -= damage
         return {'damage':damage, 'target':str(self)}
-    
-
-
-class Person(Characteristic, Skills):
+##################################################################################################################### 
+class Hero(db.Model):
+    id        = db.Column(db.Integer(), primary_key = True)
     type      = db.Column(db.Integer(), default = 0) # тип героя
     level     = db.Column(db.Integer(), default = 1) # уровень героя
-    health    = db.Column(db.Integer(), default = 100) # текущее здоровье
-    maxHealth = db.Column(db.Integer(), default = 100) # максимальное здоровье
-
-    perPointsFree = db.Column(db.Integer(), default = 5) # свободные очки характеристик performance points
-    perPointsMax  = db.Column(db.Integer(), default = 5) # максимально доступное количество
+    user_id   = db.Column(db.Integer(), db.ForeignKey('user.id'))
+    battle_id = db.Column(db.Integer(), db.ForeignKey('battle.id'))
+    battle    = db.relationship("Battle", backref = 'hero')
+#####################################################################################################################
+    intPoints = db.Column(db.Integer(), default = 1) # Интеллект
+    strPoints = db.Column(db.Integer(), default = 1) # Сила
+    staPoints = db.Column(db.Integer(), default = 1) # Выносливость
+    agiPoints = db.Column(db.Integer(), default = 1) # Ловкость
+    lucPoints = db.Column(db.Integer(), default = 1) # Удача
+    ergPoints = db.Column(db.Integer(), default = 1) # энергия
+    perPointNames = ('intPoints', 'strPoints', 'staPoints', 'agiPoints', 'lucPoints', 'ergPoints')
+#####################################################################################################################
+    perPointsFree   = db.Column(db.Integer(), default = 5) # свободные очки характеристик performance points
+    perPointsMax    = db.Column(db.Integer(), default = 5) # максимально доступное количество
     skillPointsFree = db.Column(db.Integer(), default = 1) # свободные очки навыков
-    skillPointsMax = db.Column(db.Integer(), default = 1) # максимально доступное количество
-    
-    def __init__(self):
-        super().__init__()
-    
-    # устанавливает ЛВЛ, и характеристики которые ему приемлют.
-    def setLevel(self, level):
-        o = level * 5
-        self.level = level
-        self.perPointsMax = o
-        self.perPointsFree = o
-        self.skillPointsMax = level
-        self.skillPointsFree = level
-    
+    skillPointsMax  = db.Column(db.Integer(), default = 1) # максимально доступное количество
+#####################################################################################################################
+    exp    = db.Column(db.Integer(), default = 0) # текущее количество опыта
+    energy = db.Column(db.Integer(), default = 30) # текущая энергия
+    health = db.Column(db.Integer(), default = 100) # текущее здоровье
+    @property
+    def expMax(self): return 10 * 1.5 ** self.level # опыт до следующего уровня.
+    @property
+    def energyMax(self): return self.ergPoints * 5 # максимальная энергия
+    @property
+    def healthMax(self): return self.staPoints * 100 # максимальное здоровье
+#####################################################################################################################   
+    def __repr__(self): return f'HERO battle_id = {self.battle_id}, type = {self.type}, lvl = {self.level}.'
+#####################################################################################################################
     def upLevel(self):
         self.level += 1
         self.perPointsMax += 5
         self.perPointsFree += 5
         self.skillPointsMax += 1
         self.skillPointsFree += 1
-
-    
-    def initHealth(self):
-        self.maxHealth = self.level * self.staPoints * 100
-        self.health = self.maxHealth
-    
-    def getBattleInfo(self):
-        result = dict()
-        result.update({'health':self.health})
-        result.update({'maxHealth':self.maxHealth})
-        return result
-
-class Hero(db.Model, Person):
-    id           = db.Column(db.Integer(), primary_key=True)
-    user_id      = db.Column(db.Integer(), db.ForeignKey('user.id'))
-    exp          = db.Column(db.Integer(), default = 0) # текущее количество опыта
-    expNextLevel = db.Column(db.Integer(), default = 10) # опыта до следующего уровня, так то по идеи можно и убрать... но не, не стоит:)
-    energy    = db.Column(db.Integer(), default = 30) # текущее количество энергии
-    energyMax = db.Column(db.Integer(), default = 30) # максимальное количество энергии
-
-    battle_id = db.Column(db.Integer(), db.ForeignKey('battle.id'))
-    battle = db.relationship("Battle", backref='hero')
-
-    def __repr__(self): return f'hero'
-
-    def resetPoints(self):
-        self.perPointsFree = self.perPointsMax
-        for name in Characteristic.pointParams:setattr(self, name, 1)
-        return True
     
     def setExp(self, exp):
         self.exp += exp
         while 1:
-            if self.exp >= self.expNextLevel:
-                self.exp = self.exp - self.expNextLevel
-                self.upLevel()
-                self.expNextLevel = self.level * 100
-            else:
-                break
+            expMax = self.expMax
+            if self.exp < expMax:break
+            self.exp = self.exp - expMax
+            self.upLevel()
+#####################################################################################################################       
+    def resetPerPoints(self):
+        self.perPointsFree = self.perPointsMax
+        for name in Hero.perPointNames:setattr(self, name, 1)
+        return True
     
-    def win(self, enemies):
-        self.setExp(enemies.exp)
-
-class Enemies(db.Model, Person):
-    id = db.Column(db.Integer, primary_key=True)
-
+    def upPerPoints(self, perPointName, count):
+        if not perPointName in Hero.perPointNames: return None
+        value = getattr(self, perPointName)
+        if value is None: value = 1
+        if self.perPointsFree > count:
+            self.perPointsFree -= count
+        else:
+            count = self.perPointsFree
+            self.perPointsFree = 0
+        value_new = value + count
+        setattr(self, perPointName, value_new)
+        return True
+#####################################################################################################################
+class Enemies(db.Model):
+    id        = db.Column(db.Integer(), primary_key = True)
+    type      = db.Column(db.Integer(), default = 0) # тип героя
+    level     = db.Column(db.Integer(), default = 1) # уровень героя
+    user_id   = db.Column(db.Integer(), db.ForeignKey('user.id'))
     battle_id = db.Column(db.Integer(), db.ForeignKey('battle.id'))
-    battle = db.relationship("Battle", backref='enemies')
-    exp = db.Column(db.Integer(), default = 10) # опыта за победу над врагом.
+    battle = db.relationship("Battle", backref = 'enemies')
+#####################################################################################################################
+    intPoints = db.Column(db.Integer(), default = 1) # Интеллект
+    strPoints = db.Column(db.Integer(), default = 1) # Сила
+    staPoints = db.Column(db.Integer(), default = 1) # Выносливость
+    agiPoints = db.Column(db.Integer(), default = 1) # Ловкость
+    lucPoints = db.Column(db.Integer(), default = 1) # Удача
+    perPointNames = ('intPoints', 'strPoints', 'staPoints', 'agiPoints', 'lucPoints')
+#####################################################################################################################
+    perPointsMax    = db.Column(db.Integer(), default = 5) # максимально доступное количество
+    skillPointsMax  = db.Column(db.Integer(), default = 1) # максимально доступное количество
+#####################################################################################################################
+    def __repr__(self): return f'ENEMIES battle_id = {self.battle_id}, type = {self.type}, lvl = {self.level}.'
 
-    def __repr__(self): return f'enemies'
+    def __init__(self, type, level):
+        self.type = type
+        self.setLevel(level)
+        self.setRandomPoints()
+#####################################################################################################################
+    def setLevel(self, level):
+        self.level = level
+        self.perPointsMax = 5 * level
+        self.skillPointsMax = level
+    
+    def setPerPoints(self, perPointName, count):
+        if not perPointName in Enemies.perPointNames: return None
+        value = getattr(self, perPointName)
+        if value is None: value = 1
+        if self.perPointsFree > count:
+            self.perPointsFree -= count
+        else:
+            count = self.perPointsFree
+            self.perPointsFree = 0
+        value_new = value + count
+        setattr(self, perPointName, value_new)
+        return True
 
+    def setRandomPoints(self):
+        maxPoint = round(self.perPointsMax / 5)
+        minPoint = round(maxPoint / 2)
+        for p in Enemies.perPointNames.paramSet: self.setPerPoints(p, random.randint(minPoint, maxPoint))
+        self.setPerPoints(random.choice(Enemies.perPointNames), self.perPointsFree)
+#####################################################################################################################
 class Battle(db.Model):
     id = db.Column(db.Integer(), primary_key = True)
-
 
     def close(self):
         self.hero.battle_id = None
         for e in self.enemies: db.session.delete(e)
         #db.session.delete(self)
-    
-    def getInfo(self):
-        result = dict()
-        result.update({'hero':self.hero[0].getBattleInfo()})
-        result.update({'enemies':self.enemies[0].getBattleInfo()})
-        return result
-    
-    def checkCommand(self, command):
-        skills = command.get('skills')
-        if not skills is None:
-            result = list()
-            use1 = self.hero[0].useSkills(skills)
-            use2 = self.enemies[0].useSkills(skills)
-            if use1 is False or use2 is False: return self.getInfo()
-            resultUse = use1(self.enemies[0]) # герой атакует хз пусть возвращает инфу о уроне и кого атакует
-            status = self.enemies[0].health <= 0
-            result.append({
-                'skills':skills,
-                'target':resultUse['target'], # почему так? потому что целью может является как и сам герой, когда хилит себя например...
-                'info':self.getInfo(),
-                'status':status
-            })
-            if status: self.hero[0].win(self.enemies[0])
-            resultUse = use2(self.hero[0]) # враг атакует
-            result.append({
-                'skills':skills,
-                'target':resultUse['target'], # почему так? потому что целью может является как и сам герой, когда хилит себя например...
-                'info':self.getInfo(),
-                'status':self.hero[0].health <= 0
-            })
-        
-            db.session.commit()
-            return result
-        return self.getInfo()
-
-
-
-class PullEnemies:
-    paramSet = ('intPoints', 'strPoints', 'staPoints', 'agiPoints', 'lucPoints')
-
-    @classmethod
-    def createEnemies(cls, id, level):
-        if id == 0: 
-            level += random.randint(0, 5)
-            exp = 10
-        if id == 1: 
-            level += random.randint(5, 20)
-            exp = 100
-        if id == 2: 
-            level += random.randint(20, 50)
-            exp = 1000
-        if id == 3: 
-            level += random.randint(80000, 90000)
-            exp = 10000
-        e = Enemies(exp = exp)
-        e.setLevel(level = level)
-        return e
-
-    @classmethod
-    def newEnemies(cls, id, level = 1):
-        newEnemies = cls.createEnemies(id, level)
-        cls.setRandomPerPoints(newEnemies)
-        return newEnemies
-
-    @classmethod
-    def setRandomPerPoints(cls, o):
-        maxPoint = round(o.perPointsMax / 5)
-        minPoint = round(maxPoint / 2)
-        for p in cls.paramSet: o.setPoints(p, random.randint(minPoint, maxPoint))
-        o.setPoints(random.choice(cls.paramSet), o.perPointsFree)
+#####################################################################################################################

@@ -299,13 +299,19 @@ class RoomBattle extends Scene{
 
     init(response = undefined){
         if(response !=undefined){
-            this.hero.progressBarHealth.setProcent(response.hero.health, response.hero.maxHealth);
+            this.hero.progressBarHealth.setProcent(response.info.hero.health, response.info.hero.maxHealth);
             this.hero.progressBarEnergy.setProcent(100, 100);
-            this.enemeis.progressBarHealth.setProcent(response.enemies.health, response.enemies.maxHealth);
+            this.enemeis.progressBarHealth.setProcent(response.info.enemies.health, response.info.enemies.maxHealth);
             this.enemeis.progressBarEnergy.setProcent(100, 100);
         }else{
 
         }
+        if(response.status){
+            this.then.roomMenu.Init();
+            this.then.setScena(0, this.then.roomMenu);
+            return false;
+        }
+        return true;
     }
 
     initPanelSkills(){
@@ -342,7 +348,16 @@ class RoomBattle extends Scene{
 
     userSkills(id){
         this.connect.api('/api/battle/get?skills=' + id, (response)=>{
-            this.init(response[1].info);
+            if(this.init(response[0])){ // первый ход
+                if (this.init(response[1])){// второй ход
+                    
+                }else{
+                    console.log('Поражение');
+                }
+            }else{
+                console.log('Победа');
+            }
+            
         });// + mode
     }
 }
@@ -421,6 +436,10 @@ class RoomMenu extends Scene{
 
         this.initPanelScrollFriends();
         
+    }
+    
+    Init(){
+        this.getInfoHero();
     }
 
     initPanelTop(){

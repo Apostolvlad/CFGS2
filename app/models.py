@@ -45,11 +45,6 @@ class Characteristic:
         setattr(self, namePoints, value_new)
         return {namePoints:value_new, 'perPointsFree':self.perPointsFree}
 
-    def resetPoints(self):
-        self.perPointsFree = self.perPointsMax
-        for name in Characteristic.pointParams:setattr(self, name, 1)
-        return True
-
 class Skills:
     skills = (
 
@@ -90,9 +85,23 @@ class Person(Characteristic, Skills):
         self.skillPointsMax = level
         self.skillPointsFree = level
     
+    def upLevel(self):
+        self.level += 1
+        self.perPointsMax += 5
+        self.perPointsFree += 5
+        self.skillPointsMax += 1
+        self.skillPointsFree += 1
+
+    
     def initHealth(self):
         self.maxHealth = self.level * self.staPoints * 100
         self.health = self.maxHealth
+    
+    def getBattleInfo(self):
+        result = dict()
+        result.update({'health':self.health})
+        result.update({'maxHealth':self.maxHealth})
+        return result
 
 class Hero(db.Model, Person):
     id           = db.Column(db.Integer(), primary_key=True)
@@ -107,25 +116,32 @@ class Hero(db.Model, Person):
 
     def __repr__(self): return f'hero'
 
-    def getBattleInfo(self):
-        result = dict()
-        result.update({'health':self.health})
-        result.update({'maxHealth':self.maxHealth})
-        return result
+    def resetPoints(self):
+        self.perPointsFree = self.perPointsMax
+        for name in Characteristic.pointParams:setattr(self, name, 1)
+        return True
+    
+    def setExp(self, exp):
+        self.exp += exp
+        while 1:
+            if self.exp >= self.expNextLevel:
+                self.exp = self.exp - self.expNextLevel
+                self.upLevel()
+                self.expNextLevel = self.level * 100
+            else:
+                break
+    
+    def win(self, enemies):
+        self.setExp(enemies.exp)
 
 class Enemies(db.Model, Person):
     id = db.Column(db.Integer, primary_key=True)
 
     battle_id = db.Column(db.Integer(), db.ForeignKey('battle.id'))
     battle = db.relationship("Battle", backref='enemies')
+    exp = db.Column(db.Integer(), default = 10) # опыта за победу над врагом.
 
     def __repr__(self): return f'enemies'
-
-    def getBattleInfo(self):
-        result = dict()
-        result.update({'health':self.health})
-        result.update({'maxHealth':self.maxHealth})
-        return result
 
 class Battle(db.Model):
     id = db.Column(db.Integer(), primary_key = True)
@@ -150,19 +166,22 @@ class Battle(db.Model):
             use2 = self.enemies[0].useSkills(skills)
             if use1 is False or use2 is False: return self.getInfo()
             resultUse = use1(self.enemies[0]) # герой атакует хз пусть возвращает инфу о уроне и кого атакует
+            status = self.enemies[0].health <= 0
             result.append({
                 'skills':skills,
                 'target':resultUse['target'], # почему так? потому что целью может является как и сам герой, когда хилит себя например...
-                'info':self.getInfo()
+                'info':self.getInfo(),
+                'status':status
             })
-            db.session.commit()
-
+            if status: self.hero[0].win(self.enemies[0])
             resultUse = use2(self.hero[0]) # враг атакует
             result.append({
                 'skills':skills,
                 'target':resultUse['target'], # почему так? потому что целью может является как и сам герой, когда хилит себя например...
-                'info':self.getInfo()
+                'info':self.getInfo(),
+                'status':self.hero[0].health <= 0
             })
+        
             db.session.commit()
             return result
         return self.getInfo()
@@ -174,11 +193,19 @@ class PullEnemies:
 
     @classmethod
     def createEnemies(cls, id, level):
-        if id == 0: level += random.randint(0, 5)
-        if id == 1: level += random.randint(5, 20)
-        if id == 2: level += random.randint(20, 50)
-        if id == 3: level += random.randint(50, 100)
-        e = Enemies()
+        if id == 0: 
+            level += random.randint(0, 5)
+            exp = 10
+        if id == 1: 
+            level += random.randint(5, 20)
+            exp = 100
+        if id == 2: 
+            level += random.randint(20, 50)
+            exp = 1000
+        if id == 3: 
+            level += random.randint(80000, 90000)
+            exp = 10000
+        e = Enemies(exp = exp)
         e.setLevel(level = level)
         return e
 

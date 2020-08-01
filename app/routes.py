@@ -33,7 +33,9 @@ def getHeroInfo():
     command = request.args.get('command')
     user = User.query.filter_by(username = 'Vlad').first()
     hero = user.hero
-    if not command is None: getattr(hero, command)()
+    if command: 
+        getattr(hero, command)()
+        db.session.commit()
     result = dict() 
     for name in request.args.get('params').split(','): result.update({name:getattr(hero, name, getattr(user, name, None))})
     return jsonify(result)
@@ -73,7 +75,7 @@ def createBattle():
     hero.initHealth()
     enemies.initHealth()
     db.session.commit()
-    return jsonify(battle.getInfo())
+    return jsonify({'info':battle.getInfo()})
 #http://127.0.0.1:5000/api/battle/get?skill=
 @app.route('/api/battle/get', methods = ["GET", "PUT"])
 def getBattle():

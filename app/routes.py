@@ -4,7 +4,7 @@ from app import app
 from datetime import datetime
 
 from app import db
-from app.models import User, Hero, Enemies, Battle, PullEnemies
+from app.models import User, Hero, Enemies, Battle
 
 @app.route('/')
 @app.route('/index')

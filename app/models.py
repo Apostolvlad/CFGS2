@@ -56,14 +56,28 @@ class Hero(db.Model):
     skillPointsMax  = db.Column(db.Integer(), default = 1) # максимально доступное количество
 #####################################################################################################################
     exp    = db.Column(db.Integer(), default = 0) # текущее количество опыта
-    energy = db.Column(db.Integer(), default = 30) # текущая энергия
+    energy = db.Column(db.Integer(), default = 30) # текущая энергия которая тратиться на участие в боях.
     health = db.Column(db.Integer(), default = 100) # текущее здоровье
+    rage   = db.Column(db.Integer(), default = 0) # текущая ярость, тратиться для использования способностей., накапливается при ударах.
     @property
     def expMax(self): return 10 * 1.5 ** self.level # опыт до следующего уровня.
     @property
     def energyMax(self): return self.ergPoints * 5 # максимальная энергия
     @property
     def healthMax(self): return self.staPoints * 100 # максимальное здоровье
+#####################################################################################################################  
+    def checkRage(self, count):
+        rage = self.rage - count
+        if rage < 0: return self.rage, False
+        return rage, True
+
+    def upRage(self, count): 
+        self.rage += count 
+        if self.rage > 100: self.rage = 100
+
+    def downRage(self, count): 
+        self.rage, status = self.checkRage(count)
+        return status
 #####################################################################################################################   
     def __repr__(self): return f'HERO battle_id = {self.battle_id}, type = {self.type}, lvl = {self.level}.'
 #####################################################################################################################
@@ -100,6 +114,10 @@ class Hero(db.Model):
         setattr(self, perPointName, value_new)
         return True
 #####################################################################################################################
+
+#####################################################################################################################
+
+#####################################################################################################################
 class Enemies(db.Model):
     id        = db.Column(db.Integer(), primary_key = True)
     type      = db.Column(db.Integer(), default = 0) # тип героя
@@ -117,6 +135,25 @@ class Enemies(db.Model):
 #####################################################################################################################
     perPointsMax    = db.Column(db.Integer(), default = 5) # максимально доступное количество
     skillPointsMax  = db.Column(db.Integer(), default = 1) # максимально доступное количество
+#####################################################################################################################
+    health = db.Column(db.Integer(), default = 100) # текущее здоровье
+    rage   = db.Column(db.Integer(), default = 0) # текущая ярость, тратиться для использования способностей., накапливается при ударах.
+    @property
+    def healthMax(self): return self.staPoints * 100 # максимальное здоровье
+##################################################################################################################### 
+    def checkRage(self, count):
+        rage = self.rage - count
+        if rage < 0: return self.rage, False
+        return rage, True
+
+    def upRage(self, count): 
+        self.rage += count 
+        if self.rage > 100: self.rage = 100
+
+    def downRage(self, count): 
+        self.rage, status = self.checkRage(count)
+        return status
+#####################################################################################################################   
 #####################################################################################################################
     def __repr__(self): return f'ENEMIES battle_id = {self.battle_id}, type = {self.type}, lvl = {self.level}.'
 

@@ -60,9 +60,9 @@ class Hero(db.Model):
     health = db.Column(db.Integer(), default = 100) # текущее здоровье
     rage   = db.Column(db.Integer(), default = 0) # текущая ярость, тратиться для использования способностей., накапливается при ударах.
     @property
-    def expMax(self): return 10 * 1.5 ** self.level # опыт до следующего уровня.
+    def expMax(self): return 100 + (self.level * self.level - 1) # опыт до следующего уровня.
     @property
-    def energyMax(self): return self.ergPoints * 5 # максимальная энергия
+    def energyMax(self): return 25 + self.ergPoints * 5 # максимальная энергия
     @property
     def healthMax(self): return self.staPoints * 100 # максимальное здоровье
 #####################################################################################################################  
@@ -112,7 +112,7 @@ class Hero(db.Model):
             self.perPointsFree = 0
         value_new = value + count
         setattr(self, perPointName, value_new)
-        return True
+        return value_new
 #####################################################################################################################
 
 #####################################################################################################################

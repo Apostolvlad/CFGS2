@@ -373,7 +373,7 @@ class RoomSkills extends Scene{
             'staPoints':['Выносливость', undefined],
             'agiPoints':['Ловкость', undefined],
             'lucPoints':['Удача', undefined],
-            'energyPoints':['Энергия', undefined],
+            'ergPoints':['Энергия', undefined],
         };
 
         this.addRender(new Panel(0, 0, this.then.w, this.then.h, 'rgba(150, 150, 150, 0.4)'), false);
@@ -383,9 +383,24 @@ class RoomSkills extends Scene{
 
         this.initPanelSkills();
         this.getInfoSkills();
+        this.multiplier = 1;
+        this.textMult = this.addRender(new GameText('X1', 700, 200, 150, 'rgb(0, 0, 0)', "left"), true);
+        
+    }
+
+    m(mode){
+        //console.log(this);
+        this.multiplier = this.multiplier * 10;
+        if(this.multiplier == 10000){this.multiplier = 1; this.buttonMult.w = 28;}
+        this.textMult.text = "X" + this.multiplier; 
+        this.buttonMult.w += 12;
+        return true;
     }
 
     initPanelSkills(){
+
+        this.buttonMult = this.addRender(new Panel(770, 190, 40, 40, 'rgba(150, 150, 150, 0.4)', true), true);
+        this.buttonMult.func = (mode) => {this.m();return true;};
         let x = 490;
         let y = 191;
         let mode = 1;
@@ -396,7 +411,7 @@ class RoomSkills extends Scene{
                 this.addRender(new PanelPicture('static/picture/objects/reset_33.png', 525, y, 33, 33, true), true).func = (mode) => {this.getInfoSkills(true);return true;};
             }else{
                 let q = element;
-                this.addRender(new PanelPicture('static/picture/objects/plus_33.png', 526, y, 33, 33, true), true).func = (mode, t = q) => {this.setSkills(t, 1);return true;};
+                this.addRender(new PanelPicture('static/picture/objects/plus_33.png', 526, y, 33, 33, true), true).func = (mode, t = q) => {this.setSkills(t, this.multiplier);return true;};
             };
             obj1 = this.addRender(new GameText('', x, y + 8, 150, 'rgb(0, 0, 0)', "left"), true); // 
             obj1.text = element + ' = 1';
@@ -413,8 +428,8 @@ class RoomSkills extends Scene{
     }
 
     getInfoSkills(button = false){
-        let z = '/api/hero?params=perPointsFree,intPoints,strPoints,staPoints,agiPoints,lucPoints,energyPoints'
-        if(button){z +='&command=resetPoints';};
+        let z = '/api/hero?params=perPointsFree,intPoints,strPoints,staPoints,agiPoints,lucPoints,ergPoints'
+        if(button){z +='&command=resetPerPoints';};
         this.connect.api(z, (response)=>{
             for(var element in this.listParamsHero){
                 this.listParamsHero[element][1].text = this.listParamsHero[element][0] + '=' + response[element];
@@ -429,6 +444,7 @@ class RoomMenu extends Scene{
         this.offsetFriends = 0;
 
         this.addRender(new Picture('static/picture/roomMenu/roomMenu.png', 0, 0), false);
+        this.addRender(new Picture('static/picture/background/menu/1.png', 0, 80), false);
 
         this.initPanelTop();
         this.initPanelCentry();
@@ -506,9 +522,9 @@ class RoomMenu extends Scene{
     }
 
     getInfoHero(){
-        this.connect.api('/api/hero?params=username,level,exp,expNextLevel,energy,energyMax,currencyGold,currencySilver', (response)=>{
+        this.connect.api('/api/hero?params=username,level,exp,expMax,energy,energyMax,currencyGold,currencySilver', (response)=>{
             this.progressBarEnergy.setProcent(response.energy, response.energyMax);
-            this.progressBarExp.setProcent(response.exp, response.expNextLevel);
+            this.progressBarExp.setProcent(response.exp, response.expMax);
             this.textUsername.text = response.username; 
             this.textLevel.text    = response.level;
             this.textBalanc.text   = response.currencyGold + ' Gold  ' + response.currencySilver + ' Silver';

@@ -53,9 +53,9 @@ def setSkillPoint():
     hero = user.hero
     namePoints = request.args.get('name')
     count = int(request.args.get('count'))
-    result = hero.setPoints(namePoints, count)
+    result = hero.upPerPoints(namePoints, count)
     db.session.commit()
-    return jsonify(result)
+    return jsonify({"perPointsFree":hero.perPointsFree, namePoints:result})
 
 ####################################################################################################################################
 ####################################################################################################################################

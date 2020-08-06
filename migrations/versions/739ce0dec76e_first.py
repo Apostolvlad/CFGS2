@@ -1,8 +1,8 @@
-"""add new table battle
+"""first
 
-Revision ID: 7bd32ee1abe9
+Revision ID: 739ce0dec76e
 Revises: 
-Create Date: 2020-07-23 15:09:54.719939
+Create Date: 2020-08-05 17:39:37.999410
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '7bd32ee1abe9'
+revision = '739ce0dec76e'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -33,43 +33,42 @@ def upgrade():
     )
     op.create_index(op.f('ix_user_username'), 'user', ['username'], unique=True)
     op.create_table('enemies',
-    sa.Column('perPointsFree', sa.Integer(), nullable=True),
-    sa.Column('perPointsMax', sa.Integer(), nullable=True),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('type', sa.Integer(), nullable=True),
+    sa.Column('level', sa.Integer(), nullable=True),
+    sa.Column('battle_id', sa.Integer(), nullable=True),
     sa.Column('intPoints', sa.Integer(), nullable=True),
     sa.Column('strPoints', sa.Integer(), nullable=True),
     sa.Column('staPoints', sa.Integer(), nullable=True),
     sa.Column('agiPoints', sa.Integer(), nullable=True),
     sa.Column('lucPoints', sa.Integer(), nullable=True),
-    sa.Column('ergPoints', sa.Integer(), nullable=True),
-    sa.Column('skillPointsFree', sa.Integer(), nullable=True),
+    sa.Column('perPointsMax', sa.Integer(), nullable=True),
     sa.Column('skillPointsMax', sa.Integer(), nullable=True),
-    sa.Column('type', sa.Integer(), nullable=True),
-    sa.Column('level', sa.Integer(), nullable=True),
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('battle_id', sa.Integer(), nullable=True),
+    sa.Column('health', sa.Integer(), nullable=True),
+    sa.Column('rage', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['battle_id'], ['battle.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('hero',
-    sa.Column('perPointsFree', sa.Integer(), nullable=True),
-    sa.Column('perPointsMax', sa.Integer(), nullable=True),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('type', sa.Integer(), nullable=True),
+    sa.Column('level', sa.Integer(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('battle_id', sa.Integer(), nullable=True),
     sa.Column('intPoints', sa.Integer(), nullable=True),
     sa.Column('strPoints', sa.Integer(), nullable=True),
     sa.Column('staPoints', sa.Integer(), nullable=True),
     sa.Column('agiPoints', sa.Integer(), nullable=True),
     sa.Column('lucPoints', sa.Integer(), nullable=True),
     sa.Column('ergPoints', sa.Integer(), nullable=True),
+    sa.Column('perPointsFree', sa.Integer(), nullable=True),
+    sa.Column('perPointsMax', sa.Integer(), nullable=True),
     sa.Column('skillPointsFree', sa.Integer(), nullable=True),
     sa.Column('skillPointsMax', sa.Integer(), nullable=True),
-    sa.Column('type', sa.Integer(), nullable=True),
-    sa.Column('level', sa.Integer(), nullable=True),
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('exp', sa.Integer(), nullable=True),
-    sa.Column('expNextLevel', sa.Integer(), nullable=True),
     sa.Column('energy', sa.Integer(), nullable=True),
-    sa.Column('energyMax', sa.Integer(), nullable=True),
-    sa.Column('battle_id', sa.Integer(), nullable=True),
+    sa.Column('health', sa.Integer(), nullable=True),
+    sa.Column('rage', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['battle_id'], ['battle.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')

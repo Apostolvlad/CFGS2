@@ -40,7 +40,7 @@ class Hero(db.Model):
     level     = db.Column(db.Integer(), default = 1) # уровень героя
     user_id   = db.Column(db.Integer(), db.ForeignKey('user.id'))
     battle_id = db.Column(db.Integer(), db.ForeignKey('battle.id'))
-    battle    = db.relationship("Battle", backref = 'hero')
+    battle    = db.relationship("Battle", backref = 'heros')
 #####################################################################################################################
     intPoints = db.Column(db.Integer(), default = 1) # Интеллект
     strPoints = db.Column(db.Integer(), default = 1) # Сила
@@ -60,7 +60,7 @@ class Hero(db.Model):
     health = db.Column(db.Integer(), default = 100) # текущее здоровье
     rage   = db.Column(db.Integer(), default = 0) # текущая ярость, тратиться для использования способностей., накапливается при ударах.
     @property
-    def expMax(self): return 100 + (self.level * self.level - 1) # опыт до следующего уровня.
+    def expMax(self): return 100 + (self.level * (self.level - 1)) # опыт до следующего уровня.
     @property
     def energyMax(self): return 25 + self.ergPoints * 5 # максимальная энергия
     @property
@@ -122,7 +122,6 @@ class Enemies(db.Model):
     id        = db.Column(db.Integer(), primary_key = True)
     type      = db.Column(db.Integer(), default = 0) # тип героя
     level     = db.Column(db.Integer(), default = 1) # уровень героя
-    user_id   = db.Column(db.Integer(), db.ForeignKey('user.id'))
     battle_id = db.Column(db.Integer(), db.ForeignKey('battle.id'))
     battle = db.relationship("Battle", backref = 'enemies')
 #####################################################################################################################
@@ -171,11 +170,11 @@ class Enemies(db.Model):
         if not perPointName in Enemies.perPointNames: return None
         value = getattr(self, perPointName)
         if value is None: value = 1
-        if self.perPointsFree > count:
-            self.perPointsFree -= count
+        if self.perPointsMax > count:
+            self.perPointsMax -= count
         else:
-            count = self.perPointsFree
-            self.perPointsFree = 0
+            count = self.perPointsMax
+            self.perPointsMax = 0
         value_new = value + count
         setattr(self, perPointName, value_new)
         return True
@@ -183,9 +182,11 @@ class Enemies(db.Model):
     def setRandomPoints(self):
         maxPoint = round(self.perPointsMax / 5)
         minPoint = round(maxPoint / 2)
-        for p in Enemies.perPointNames.paramSet: self.setPerPoints(p, random.randint(minPoint, maxPoint))
-        self.setPerPoints(random.choice(Enemies.perPointNames), self.perPointsFree)
+        for p in Enemies.perPointNames: self.setPerPoints(p, random.randint(minPoint, maxPoint))
+        self.setPerPoints(random.choice(Enemies.perPointNames), self.perPointsMax)
 #####################################################################################################################
+from skills import useSkill
+from random import randint
 class Battle(db.Model):
     id = db.Column(db.Integer(), primary_key = True)
 
@@ -193,4 +194,29 @@ class Battle(db.Model):
         self.hero.battle_id = None
         for e in self.enemies: db.session.delete(e)
         #db.session.delete(self)
+    
+    @property
+    def hero(self): return self.heros[0]
+
+    @property
+    def enemy(self): return self.enemies[0]
+
+    @property
+    def status(self):
+        if self.hero.health <= 0: return 1
+        if self.enemy.health <= 0: return 2
+        return 0
+
+    # Автобой, если mode = False, значит идёт ход игрока.
+    def autoStep(self, mode):
+        if mode:
+            return useSkill(randint(0, 1), self.enemy, self.hero)
+        else:
+            return useSkill(randint(0, 1), self.hero, self.enemy)
+
+    # ход героя.
+    def heroStep(self, mode): # номер скилла
+        return useSkill(mode, self.hero, self.enemy) # кто юзает, враг, номер скилла. 
+
+
 #####################################################################################################################

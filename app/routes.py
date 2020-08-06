@@ -62,29 +62,77 @@ def setSkillPoint():
 ####################################################################################################################################
 ####################################################################################################################################
 ####################################################################################################################################
+def getBattleState(battle, tern = 0):
+    return {
+        "hero":{
+            "health":battle.hero.health,
+            "healthMax":battle.hero.healthMax,
+            "rage":battle.hero.rage
+        },
+        "enemy":{
+            "health":battle.enemy.health,
+            "healthMax":battle.enemy.healthMax,
+            "rage":battle.enemy.rage
+        },
+        "tern":tern,
+        "status":battle.status,
+    }
+
 #http://127.0.0.1:5000/api/battle/create?mode=0
 @app.route('/api/battle/create', methods = ["GET", "PUT"])
 def createBattle():
     mode = int(request.args.get('mode')) #0-4
     user = User.query.filter_by(username = 'Vlad').first()
     hero = user.hero
+    battle = hero.battle
+    if battle: 
+        if battle.status: 
+            battle.close()
+        else:
+            return jsonify([getBattleState(battle),])
+        
+    enemies = Enemies(0, hero.level)
+    hero.health = hero.healthMax
+    enemies.health = enemies.healthMax
     battle = Battle()
-    enemies = PullEnemies.newEnemies(id = mode, level = hero.level)
-    battle.hero.append(hero)
+    battle.heros.append(hero)
     battle.enemies.append(enemies)
-    hero.initHealth()
-    enemies.initHealth()
     db.session.commit()
-    return jsonify({'info':battle.getInfo()})
-#http://127.0.0.1:5000/api/battle/get?skill=
+    return jsonify([getBattleState(battle),])
+#http://127.0.0.1:5000/api/battle/get?skill=0&auto=1
 @app.route('/api/battle/get', methods = ["GET", "PUT"])
 def getBattle():
     user = User.query.filter_by(username = 'Vlad').first()
-    hero = user.hero
-    battle = hero.battle
-    enemies = battle.enemies
-    result = battle.checkCommand(request.args)
-    return jsonify(result)    
+    battle = user.hero.battle
+    # автобой.
+    if request.args.get('auto'):
+        result = []
+        for i in range(999999): 
+            if i % 2 == 1:
+                battle.autoStep(True)
+                result.append(getBattleState(battle, tern = 2))
+            else:
+                battle.autoStep(False)
+                result.append(getBattleState(battle, tern = 1))
+            if battle.status: break
+        result.reverse()
+        db.session.commit()
+        return jsonify(result)
+    # если используется способность.
+    skill = request.args.get('skill')
+    if skill:
+        result = []
+        if battle.heroStep(skill):
+            result.append(getBattleState(battle, tern = 1))
+            for i in range(999999): 
+                if not battle.autoStep(True): continue# автоход врага ОПТИМИЗИРОВАТЬ!!!!
+                result.append(getBattleState(battle, tern = 2))
+                break # если герой находится в стане, значит цикл должен продолжаться, пока он не выйдет из стана.
+            result.reverse()
+            db.session.commit()
+            return jsonify(result)
+        
+    return jsonify([getBattleState(battle),])    
 #http://127.0.0.1:5000/api/battle/quit
 @app.route('/api/battle/quit', methods = ["GET", "PUT"])
 def quitBattle():
@@ -110,6 +158,17 @@ def create():
     user.heros.append(hero)
     db.session.add(user)
     db.session.commit()
-    hero.setLevel(10)
+    for _ in range(100): hero.upLevel()
     db.session.commit()
     return jsonify({'result':'ok'})
+# http://127.0.0.1:5000/api/uplevel
+@app.route('/api/uplevel', methods = ["GET",])
+def upLevel():
+    user = User.query.filter_by(username = 'Vlad').first()
+    hero = user.hero
+    result = []
+    for _ in range(10000): 
+        result.append({'level':hero.level, 'exp':hero.expMax})
+        hero.upLevel()
+    db.session.commit()
+    return jsonify(result)

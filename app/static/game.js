@@ -17,11 +17,11 @@ class GameObject{
 // Данный модификатор позволяет задавать поведение при наведении на объект. self.update = this.modeUpdate(this.update)
     modeUpdate(f, moveShow){return function(){this.show = this.move == moveShow;return f.apply(this, arguments);}}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    checkMove(x, y){this.move = (this.x < x & x < this.x + this.w & this.y < y & y < this.y + this.h);}
+    checkMove(x, y){this.move = (this.x < x && x < this.x + this.w && this.y < y && y < this.y + this.h);}
 
-    click(mode){if(this.move&this.func != undefined)return this.func(mode);return false;}
+    click(mode){if(this.move && this.func != undefined)return this.func(mode);return false;}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    update(){}
+    update(time){}
 
     render(ctx){}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,7 +131,6 @@ class ProgressBar extends GameObject{
     }
 
     render2(ctx){
-        console.log('render');
         ctx.fillStyle = this.rgba;//'rgb(0, 0, 0, 0)';//
         ctx.fillRect(this.x, this.y, this.wP, this.h);
     }
@@ -217,8 +216,8 @@ class Scene{
         return obj;
     }
 
-    update(){
-        this.objectRender.forEach(element=>{element.update()});
+    update(time){
+        this.objectRender.forEach(element=>{element.update(time)});
     }
 
     render(ctx){
@@ -269,10 +268,135 @@ class RoomEnemies extends Scene{
         this.then.setScena(0, this.then.roomBattle);
         this.then.setScena(1);
         this.connect.api(z, (response)=>{
-            this.then.roomBattle.init(response)
+            this.then.roomBattle.states = response;
         });
     }
 
+}
+
+class Anima{
+    constructor(parent){
+        this.parent = parent;
+        this.func = undefined;
+        this.then = this;
+    }
+
+    update(time){this.then.func(this.then.parent);}
+
+    render(){}
+}
+
+class BaseAnimation extends GameObject{
+    constructor(imagePath, x, y, w, h){
+        super(x, y, w, h);
+        this.image = new Image();
+        this.image.src = imagePath;
+        this.xStart = x; // сохраняем начальную позицию, чтобы можно было вернуться обратно на неё.
+        this.yStart = y; 
+        this.index = 0; 
+    }
+
+    update(time){
+
+    }
+
+    draw(ctx){
+        ctx.drawImage(this.image, this.w  * this.index, 0, this.w, this.h, this.x, this.y, this.w, this.h);
+    }
+
+    // сбрасываем анимацию до стартового состояния.
+    reset(){
+        this.x = this.xStart;
+        this.y = this.yStart;
+        this.index = 0;
+    }
+
+    start(){
+
+    }
+}
+
+class BasePicture{
+    constructor(){
+
+    }
+}
+
+class AnimaPerson extends BaseAnimation{
+    constructor(){
+
+    }
+}
+
+class AnimationPerson extends GameObject{
+    constructor(img1, img2, x, y, w, h, xmin, xmax, step){ // задаем рендеринг от this.ifMove чтобы он либо рендерил при наведении либо нет
+        super(x, y, w, h);
+        this.img1 = img1;
+        this.img2 = img2;
+        this.x2 = x; // стартовая позиция, чтобы вернуться можно было обратно =)
+        this.sx = 0;
+        this.sy = 0;
+        this.xmin = xmin;
+        this.xmax = xmax;
+        this.time_save = 0;
+        this.mode = 0; // отвечает за состояние персонажа,  0 - стоит, 1 - идёт и тд.
+        this.count = 1;
+
+        this.step = step;
+    }
+
+    anima_next(min, max){
+        if(this.count >= min && this.count < max){
+            this.count += 1;
+        }else{
+            this.count = min;
+        }
+    }
+
+    run_step(){
+        this.anima_next(2, 3);
+        let x = this.x + this.step;
+        if(x >= this.xmin && x <= this.xmax){
+            this.x = x;
+        }else{
+            return false;
+        }
+        return true;
+    }
+
+    update(time){
+        if(this.time_save < time){
+            this.time_save = time + 50;
+            if(this.mode == 0){
+                this.count = 1;
+            }else if(this.mode == 1){
+                if(!this.run_step()){ // Если идти не удаётся!
+                    this.mode = 2; // переходим во 2 состояние.
+                    this.step *= -1;
+                }
+            }else if(this.mode == 3){
+                if(!this.run_step()){ // Если идти не удаётся!
+                    this.mode = 0; // переходим в состояние ожидания.
+                    this.step *= -1;
+                }
+            }else if(this.mode == 4){
+                this.x = this.x2; // стартовая позиция
+                this.mode = 0;
+                this.step *= -1;
+            }
+        }
+    }
+
+    render(ctx){
+        if(this.step > 0){
+            ctx.drawImage(this.img1, this.w  * (this.count - 1), this.sy, this.w, this.h, this.x, this.y, this.w, this.h);
+        }else{
+            ctx.drawImage(this.img2, this.w  * (this.count - 1), this.sy, this.w, this.h, this.x, this.y, this.w, this.h);
+        }
+
+        //console.log(this.w  * (this.count - 1), this.sy, this.w, this.h, this.x, this.y, this.w, this.h);
+        
+    }
 }
 
 class RoomBattle extends Scene{
@@ -282,11 +406,13 @@ class RoomBattle extends Scene{
         this.hero = {
             progressBarHealth:undefined,
             progressBarEnergy:undefined,
+            person:undefined
         }
 
         this.enemeis = {
             progressBarHealth:undefined,
             progressBarEnergy:undefined,
+            person:undefined
         }
 
         this.addRender(new Picture('static/picture/roomArena/roomBattle.png', 0, 0), false);
@@ -295,23 +421,60 @@ class RoomBattle extends Scene{
 
         this.initPanelSkills();
 
+        this.states = [];
+        this.countAnima = 25;
+        
+        this.animation = this.addRender(new Anima(this), false);
+        this.animation.func = this.updateAnim;
     }
 
-    init(response = undefined){
-        if(response !=undefined){
-            this.hero.progressBarHealth.setProcent(response.info.hero.health, response.info.hero.maxHealth);
-            this.hero.progressBarEnergy.setProcent(100, 100);
-            this.enemeis.progressBarHealth.setProcent(response.info.enemies.health, response.info.enemies.maxHealth);
-            this.enemeis.progressBarEnergy.setProcent(100, 100);
-        }else{
+    updateAnim(parent){
+        parent.check()
+    }
 
-        }
+    init(response){
+        this.hero.progressBarHealth.setProcent(response.hero.health, response.hero.healthMax);
+        this.hero.progressBarEnergy.setProcent(response.hero.rage, 100);
+        this.enemeis.progressBarHealth.setProcent(response.enemy.health, response.enemy.healthMax);
+        this.enemeis.progressBarEnergy.setProcent(response.enemy.rage, 100);
         if(response.status){
             this.then.roomMenu.Init();
             this.then.setScena(0, this.then.roomMenu);
             return false;
         }
         return true;
+    }
+
+    check(){
+        if(this.states.length > 0){// && this.hero.person.mode == 0 && this.enemeis.person.mode == 0){ 
+            // если оба персонажа ожидают действий то.. пытаемся определить ход персонажа и запускаем анимацию хотьбы.
+            if(this.hero.person.mode == 0 && this.enemeis.person.mode == 0){
+                let tern = this.states[this.states.length - 1].tern;
+                if(tern == 1){
+                    this.hero.person.mode = 1;
+                }else if(tern == 2){
+                    this.enemeis.person.mode = 1;
+                }else{
+                    this.init(this.states.pop());
+                }
+            }else{
+                // иначе, ожидаем когда персона доберется до врага и меняем значение его хп.
+                let p = undefined;
+                if(this.hero.person.mode == 2){
+                    p = this.hero.person;
+                }else if(this.enemeis.person.mode == 2){
+                    p = this.enemeis.person;
+                }
+                if(p){
+                    if(this.init(this.states.pop())){
+                        p.mode = 3; // поймали состояние 2, и теперь отправляем персонажа обратно.
+                    }else{
+                        p.mode = 4; // если бой завершён, то возвращаем персонажа в изначальную позицию.
+                    }
+                   
+                }
+            }
+        }
     }
 
     initPanelSkills(){
@@ -330,7 +493,7 @@ class RoomBattle extends Scene{
         this.addRender(new PanelPicture('static/picture/objects/nextRight_50.png', 738, 555, 17, 50), true).func = (mode) => {return true;}; 
         
         this.addRender(new Panel(14, 559, 225, 40, 'rgba(255, 36, 0, 0.4)', true), true).func = (mode) => {this.connect.api('/api/battle/quit', (response)=>{});this.then.setScena(0, this.then.roomMenu);return true;};
-        this.addRender(new Panel(762, 559, 225, 40, 'rgba(0, 154, 99, 0.5)', true), true).func = (mode) => {this.connect.api('/api/battle/quit', (response)=>{});this.then.setScena(0, this.then.roomMenu);return true;};
+        this.addRender(new Panel(762, 559, 225, 40, 'rgba(0, 154, 99, 0.5)', true), true).func = (mode) => {this.connect.api('/api/battle/get?auto=1', (response)=>{this.states = response;});return true;};
     }
 
     initPanelBars(){
@@ -338,26 +501,25 @@ class RoomBattle extends Scene{
         let colorProgressBar1 = 'rgba(255, 36, 0, 0.4)'; 
         this.hero.progressBarHealth = this.addRender(new ProgressBar(8, 6, 337, 46, colorProgressBar1, "40px serif"), false);
         this.hero.progressBarEnergy = this.addRender(new ProgressBar(8, 52, 337, 32, colorProgressBar2, "25px serif"), false);
+        let image_left = new Image();
+        let image_right = new Image();
+
+        image_left.src = 'static/picture/hero/hero0/left.png';
+        image_right.src = 'static/picture/hero/hero0/right.png';
+        this.hero.person = this.addRender(new AnimationPerson(image_left, image_right, 50, 200, 75, 210, 50, 800, 25), false);
 
         this.enemeis.progressBarHealth = this.addRender(new ProgressBar(656, 6, 338, 46, colorProgressBar1, "40px serif"), false);
         this.enemeis.progressBarEnergy = this.addRender(new ProgressBar(656, 52, 338, 32, colorProgressBar2, "25px serif"), false);
+        this.enemeis.person = this.addRender(new AnimationPerson(image_left, image_right, 800, 200, 75, 210, 50, 800, -25), false);
+        //this.enemeis.person = this.addRender(new AnimationPicture(656, 150), false);
         
         //this.enemeis.progressBarHealth = this.addRender(new ProgressBar(630, 45, 365, 37, colorProgressBar), false);
         //this.enemeis.progressBarEnergy = this.addRender(new ProgressBar(8, 45, 365, 37, colorProgressBar), false);
     }
 
     userSkills(id){
-        this.connect.api('/api/battle/get?skills=' + id, (response)=>{
-            if(this.init(response[0])){ // первый ход
-                if (this.init(response[1])){// второй ход
-                    
-                }else{
-                    console.log('Поражение');
-                }
-            }else{
-                console.log('Победа');
-            }
-            
+        this.connect.api('/api/battle/get?skill=' + id, (response)=>{
+            this.states = this.states.concat(response);
         });// + mode
     }
 }
@@ -459,9 +621,10 @@ class RoomMenu extends Scene{
     }
 
     initPanelTop(){
-        let colorProgressBar = 'rgba(0, 0, 0, 0.4)';
-        this.progressBarEnergy = this.addRender(new ProgressBar(8, 45, 365, 37, colorProgressBar), false);
-        this.progressBarExp = this.addRender(new ProgressBar(630, 45, 365, 37, colorProgressBar), false);
+        let colorProgressBar1 = 'rgba(255, 207, 64, 0.5)';
+        let colorProgressBar2 = 'rgba(0, 154, 99, 0.5)';
+        this.progressBarEnergy = this.addRender(new ProgressBar(8, 45, 361, 37, colorProgressBar1), false);
+        this.progressBarExp = this.addRender(new ProgressBar(630, 45, 365, 37, colorProgressBar2), false);
 
         this.textUsername = this.addRender(new GameText('', 370, 40, 250), false);
 
@@ -475,10 +638,10 @@ class RoomMenu extends Scene{
     initPanelCentry(){
         //панель квест кнопок
         for(let y = 0; y < 3; y++){
-            this.addRender(new PanelPicture('static/picture/objects/frameCircle_80.png', 20, 110 + y * 90, 80, 80), true);
+            this.addRender(new PanelPicture('static/picture/objects/frameCircle_80.png', 20, 110 + y * 90, 80, 80), false);
         }
         for(let y = 0; y < 3; y++){
-            this.addRender(new PanelPicture('static/picture/objects/frameCircleBox_80.png', 900, 110 + y * 90, 80, 80), true);
+            this.addRender(new PanelPicture('static/picture/objects/frameCircleBox_80.png', 900, 110 + y * 90, 80, 80), false);
         }
     }
 
@@ -526,7 +689,7 @@ class RoomMenu extends Scene{
             this.progressBarEnergy.setProcent(response.energy, response.energyMax);
             this.progressBarExp.setProcent(response.exp, response.expMax);
             this.textUsername.text = response.username; 
-            this.textLevel.text    = response.level;
+            this.textLevel.text    = response.level + ' lvl';
             this.textBalanc.text   = response.currencyGold + ' Gold  ' + response.currencySilver + ' Silver';
         });
     }
@@ -612,17 +775,18 @@ function start(){
         }
     }
 
-    //let previous = Date.now();
+    let previous = Date.now();
     //let lag = 0.0;
     //let MS_PER_UPDATE = 60;
     function Loop(){
-        //let current = Date.now();
-        //let elapsed = current - previous;
+        let current = Date.now();
+        let time = current - previous;
         //previous = current;
         //lag += elapsed;
+        //console.log(elapsed);
         ProcessInput();
         checkObjects();
-        Update();
+        Update(time);
         //while (lag >= MS_PER_UPDATE) {
         //    Update();
             //console.log('update');
@@ -633,8 +797,8 @@ function start(){
         requestAnimationFrame(Loop);
     }
 
-    function Update(){
-        for(let i = 0; i < this.objectI; i++){this.objects[i].update();}
+    function Update(time){
+        for(let i = 0; i < this.objectI; i++){this.objects[i].update(time);}
     }
 
     function Render(ctx){
